@@ -63,10 +63,10 @@ public:
 
 	// Only if !isStage
 	bool visible;
-	int x;
-	int y;
-	int size;
-	int direction;
+	float x;				// Stored as an int, but a float in-game
+	float y;				// ^
+	float size;				// ^
+	float direction;		// ^
 	bool draggable;
 	char* rotationStyle;
 

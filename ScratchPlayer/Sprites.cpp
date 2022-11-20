@@ -53,6 +53,11 @@ Sprite::Sprite(json data) {
 		this->videoTransparency = data["videoTransparency"];
 		this->videoState = getCharsForJSON(data["videoState"]);
 		this->textToSpeechLanguage = getCharsForJSON(data["textToSpeechLanguage"]);
+
+		this->visible = true;
+		this->x = 0;
+		this->y = 0;
+		this->size = 100;
 	}
 	else {
 		this->visible = data["visible"];

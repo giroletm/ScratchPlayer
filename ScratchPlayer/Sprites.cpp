@@ -212,11 +212,27 @@ Block::Block(std::string id, json data) {
 }
 
 Input::Input(std::string id, json data) {
+	this->name = getCharsForString(id);
+	this->content = data;
 
+
+	#ifdef _DEBUG
+	char* val = getCharsForString(data.dump());
+	printf("\t\t\t- Input \"%s\" = %s.\n", this->name, val);
+	delete[] val;
+	#endif
 }
 
 Field::Field(std::string id, json data) {
+	this->name = getCharsForString(id);
+	this->content = data;
 
+
+	#ifdef _DEBUG
+	char* val = getCharsForString(data.dump());
+	printf("\t\t\t- Field \"%s\" = %s.\n", this->name, val);
+	delete[] val;
+	#endif
 }
 
 Comment::Comment(std::string id, json data, Sprite* sprite) {
@@ -237,16 +253,19 @@ Sound::Sound(json data) : Asset(data) {
 
 
 Targets::~Targets() {
-	int spriteCount = data.size();
-	for (int i = 0; i < spriteCount; i++) {
-		delete this->sprites[i];
-	}
+	if (this->sprites) {
+		int spriteCount = data.size();
+		for (int i = 0; i < spriteCount; i++) {
+			delete this->sprites[i];
+		}
 
-	delete[] this->sprites;
+		delete[] this->sprites;
+	}
 }
 
 Sprite::~Sprite() {
-	delete[] this->name;
+	if(this->name)
+		delete[] this->name;
 
 	if (this->isStage) {
 		if(this->videoState)
@@ -341,11 +360,13 @@ Block::~Block() {
 }
 
 Input::~Input() {
-
+	if (this->name)
+		delete[] this->name;
 }
 
 Field::~Field() {
-
+	if (this->name)
+		delete[] this->name;
 }
 
 Comment::~Comment() {

@@ -190,6 +190,13 @@ Block::Block(std::string id, json data) {
 		this->x = data["x"];
 		this->y = data["y"];
 	}
+	else {
+		this->x = 0;
+		this->y = 0;
+	}
+
+	this->parent = 0;
+	this->next = 0;
 
 
 	#ifdef _DEBUG
@@ -236,19 +243,56 @@ Field::Field(std::string id, json data) {
 }
 
 Comment::Comment(std::string id, json data, Sprite* sprite) {
+	this->uniqueID = getCharsForString(id);
+	
+	char* bID = getCharsForJSON(data["blockId"]);
+	this->blockId = (bID) ? sprite->getBlockByUniqueID(bID) : 0;
+	delete[] bID;
 
+	this->x = data["x"];
+	this->y = data["y"];
+	this->width = data["width"];
+	this->height = data["height"];
+	this->minimized = data["minimized"];
+
+	this->text = getCharsForJSON(data["text"]);
+
+
+	#ifdef _DEBUG
+	printf("\t\t- Comment \"%s\".\n", this->text);
+	#endif
 }
 
 Asset::Asset(json data) {
-
+	this->name = getCharsForJSON(data["name"]);
+	this->dataFormat = getCharsForJSON(data["dataFormat"]);
+	this->assetId = getCharsForJSON(data["assetId"]);
+	this->md5ext = getCharsForJSON(data["md5ext"]);
 }
 
 Costume::Costume(json data) : Asset(data) {
+	json bmpRes = data["bitmapResolution"];
+	if (bmpRes.is_null()) this->bitmapResolution = 1;
+	else this->bitmapResolution = bmpRes;
 
+	this->rotationCenterX = data["rotationCenterX"];
+	this->rotationCenterY = data["rotationCenterY"];
+
+
+	#ifdef _DEBUG
+	printf("\t\t- Costume \"%s\".\n", this->name);
+	#endif
 }
 
 Sound::Sound(json data) : Asset(data) {
+	this->format = getCharsForJSON(data["format"]);
+	this->rate = data["rate"];
+	this->sampleCount = data["sampleCount"];
 
+
+	#ifdef _DEBUG
+	printf("\t\t- Sound \"%s\".\n", this->name);
+	#endif
 }
 
 
@@ -370,11 +414,25 @@ Field::~Field() {
 }
 
 Comment::~Comment() {
+	if (this->uniqueID)
+		delete[] this->uniqueID;
 
+	if (this->text)
+		delete[] this->text;
 }
 
 Asset::~Asset() {
+	if (this->name)
+		delete[] this->name;
 
+	if (this->dataFormat)
+		delete[] this->dataFormat;
+
+	if (this->assetId)
+		delete[] this->assetId;
+
+	if (this->md5ext)
+		delete[] this->md5ext;
 }
 
 Costume::~Costume() {
@@ -382,7 +440,8 @@ Costume::~Costume() {
 }
 
 Sound::~Sound() {
-
+	if (this->format)
+		delete[] this->format;
 }
 
 

@@ -186,7 +186,7 @@ public:
 
 	char* name;
 	char* dataFormat;
-	char* assetID;
+	char* assetId;
 	char* md5ext;
 };
 

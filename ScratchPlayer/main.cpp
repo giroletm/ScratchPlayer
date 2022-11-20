@@ -16,7 +16,7 @@ int main(int argc, char* argv[])
     if (error == 0) {
 
         json data = json::parse((char*)content);
-        std::cout << data << std::endl;
+        std::cout << data["targets"] << std::endl;
 
     }
 

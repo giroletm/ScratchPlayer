@@ -7,7 +7,7 @@ using json = nlohmann::json;
 
 int main(int argc, char* argv[])
 {
-    ZipFile *zfile = new ZipFile("Scratch Project5.sb3");
+    ZipFile *zfile = new ZipFile("Test.sb3");
 
     u8* content = 0;;
     size_t size;
@@ -17,7 +17,6 @@ int main(int argc, char* argv[])
 
         json data = json::parse((char*)content);
         std::cout << data["targets"] << std::endl;
-
     }
 
     if(content)

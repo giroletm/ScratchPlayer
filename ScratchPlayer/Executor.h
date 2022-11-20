@@ -11,5 +11,7 @@ public:
 	ZipFile* zfile;
 	Targets* targets;
 
+	static Executor* instance;
+
 	void render();
 };

@@ -38,25 +38,37 @@ int ZipFile::getContentForFileByIndex(int index, u8** outBuffer, size_t* size, b
     struct zip_stat* finfo = new (struct zip_stat);
     zip_stat_init(finfo);
 
-    *outBuffer = NULL;
-    *size = 0;
+    if (outBuffer != NULL)
+        *outBuffer = NULL;
 
+    if (size != NULL)
+        *size = 0;
+
+    int exists = -1;
     if ((zip_stat_index(archive, index, 0, finfo)) == 0) {
-        *size = finfo->size;
-        if (terminate) {
-            *outBuffer = new u8[*size + 1];
-            *outBuffer[*size] = 0;
-        }
-        else *outBuffer = new u8[*size];
+        if (size != NULL)
+            *size = finfo->size;
 
-        zip_file_t* fd = zip_fopen_index(archive, index, 0);
-        zip_fread(fd, *outBuffer, finfo->size);
+        if (outBuffer != NULL) {
+            if (terminate) {
+                *outBuffer = new u8[finfo->size + 1];
+                (*outBuffer)[finfo->size] = 0;
+            }
+            else *outBuffer = new u8[finfo->size];
+
+            zip_file_t* fd = zip_fopen_index(archive, index, 0);
+            zip_fread(fd, *outBuffer, finfo->size);
+        }
+
+        exists = 0;
+    }
+    else {
+        printf("Couldn't find file ID \"%d\" in ZIP file.\n", index);
     }
 
     delete finfo;
 
-    if (*size == 0) return -1;
-    return 0;
+    return exists;
 }
 
 int ZipFile::getContentForFile(const char* path, u8** outBuffer, size_t *size, bool terminate) {
@@ -65,19 +77,29 @@ int ZipFile::getContentForFile(const char* path, u8** outBuffer, size_t *size, b
     struct zip_stat* finfo = new (struct zip_stat);
     zip_stat_init(finfo);
 
-    *outBuffer = NULL;
-    *size = 0;
+    if(outBuffer != NULL)
+        *outBuffer = NULL;
 
+    if (size != NULL)
+        *size = 0;
+
+    int exists = -1;
     if ((zip_stat(archive, path, 0, finfo)) == 0) {
-        *size = finfo->size;
-        if (terminate) {
-            *outBuffer = new u8[*size + 1];
-            (*outBuffer)[*size] = 0;
-        }
-        else *outBuffer = new u8[*size];
+        if(size != NULL)
+            *size = finfo->size;
 
-        zip_file_t* fd = zip_fopen(archive, path, 0);
-        zip_fread(fd, *outBuffer, finfo->size);
+        if (outBuffer != NULL) {
+            if (terminate) {
+                *outBuffer = new u8[finfo->size + 1];
+                    (*outBuffer)[finfo->size] = 0;
+            }
+            else *outBuffer = new u8[finfo->size];
+
+            zip_file_t* fd = zip_fopen(archive, path, 0);
+            zip_fread(fd, *outBuffer, finfo->size);
+        }
+
+        exists = 0;
     }
     else {
         printf("Couldn't find file \"%s\" in ZIP file.\n", path);
@@ -85,6 +107,5 @@ int ZipFile::getContentForFile(const char* path, u8** outBuffer, size_t *size, b
 
     delete finfo;
 
-    if (*size == 0) return -1;
-    return 0;
+    return exists;
 }

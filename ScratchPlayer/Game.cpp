@@ -1,9 +1,12 @@
 #include "Game.h"
+#include "Executor.h"
 
 Game* Game::instance = 0;
 
 Game::Game() {
 	instance = this;
+
+	exec = 0;
 }
 
 Game::~Game() {

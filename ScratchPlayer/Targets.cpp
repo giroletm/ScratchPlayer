@@ -1,7 +1,7 @@
 #include <iostream>
 #include <string>
 
-#include "Targets.h"
+#include "Executor.h"
 
 
 char* getCharsForString(std::string str) {
@@ -283,6 +283,14 @@ Costume::Costume(json data) : Asset(data) {
 	this->rotationCenterX = data["rotationCenterX"];
 	this->rotationCenterY = data["rotationCenterY"];
 
+	u8* textureData = 0;
+	size_t size = 0;
+	Executor::instance->zfile->getContentForFile(this->md5ext, &textureData, &size, false);
+	SDL_RWops *rw = SDL_RWFromMem(textureData, size);
+	this->costumeTexture = IMG_LoadTexture_RW(Game::instance->renderer, rw, true);
+
+	delete[] textureData;
+
 
 	#ifdef _DEBUG
 	printf("\t\t- Costume \"%s\".\n", this->name);
@@ -441,7 +449,8 @@ Asset::~Asset() {
 }
 
 Costume::~Costume() {
-
+	if (this->costumeTexture)
+		SDL_DestroyTexture(this->costumeTexture);
 }
 
 Sound::~Sound() {

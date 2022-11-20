@@ -7,15 +7,15 @@
 #include "SDL.h"
 #include "SDL_image.h"
 
-#include "Executor.h"
 
+class Executor;
 
 class Game {
 public:
 	Game();
 	~Game();
 
-	Executor* exec = 0;;
+	Executor* exec;
 
 	static Game* instance;
 

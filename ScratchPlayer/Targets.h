@@ -2,8 +2,13 @@
 
 #include <vector>;
 
+#include "SDL.h";
+#include "SDL_image.h";
+
 #include "json.hpp";
 using json = nlohmann::json;
+
+#include "Game.h";
 
 
 class Sprite;
@@ -203,6 +208,8 @@ public:
 
 	int rotationCenterX;
 	int rotationCenterY;
+
+	SDL_Texture* costumeTexture;
 };
 
 class Sound : public Asset {

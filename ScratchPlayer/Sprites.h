@@ -85,7 +85,7 @@ public:
 
 class Variable {
 public:
-	Variable(json data);
+	Variable(std::string id, json data);
 	~Variable();
 
 	char* uniqueID;
@@ -96,7 +96,7 @@ public:
 
 class List {
 public:
-	List(json data);
+	List(std::string id, json data);
 	~List();
 
 	char* uniqueID;
@@ -107,7 +107,7 @@ public:
 
 class Broadcast {
 public:
-	Broadcast(json data);
+	Broadcast(std::string id, json data);
 	~Broadcast();
 
 	char* uniqueID;
@@ -117,7 +117,7 @@ public:
 
 class Block {
 public:
-	Block(json data);
+	Block(std::string id, json data);
 	~Block();
 
 	char* uniqueID;
@@ -135,11 +135,13 @@ public:
 
 	int x;
 	int y;
+
+	void doParenting(Sprite* sprite, json data);
 };
 
 class Input {
 public:
-	Input(json data);
+	Input(std::string id, json data);
 	~Input();
 
 	char* name;
@@ -149,7 +151,7 @@ public:
 
 class Field {
 public:
-	Field(json data);
+	Field(std::string id, json data);
 	~Field();
 
 	char* name;
@@ -159,7 +161,7 @@ public:
 
 class Comment {
 public:
-	Comment(json data);
+	Comment(std::string id, json data, Sprite* sprite);
 	~Comment();
 
 	char* uniqueID;

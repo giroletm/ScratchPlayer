@@ -13,5 +13,8 @@ public:
 
 	static Executor* instance;
 
+	bool isRunning;
+	SDL_Texture* hangOn;
+
 	void render();
 };

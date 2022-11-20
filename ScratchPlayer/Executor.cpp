@@ -18,11 +18,16 @@ Executor::Executor(const char* sb3Filename) {
 
     if (content)
         delete[] content;
+
+    this->isRunning = false;
+    this->hangOn = IMG_LoadTexture(Game::instance->renderer, "assets/HangOn.png");
 }
 
 Executor::~Executor() {
     delete targets;
     delete zfile;
+
+    SDL_DestroyTexture(this->hangOn);
 
     instance = 0;
 }
@@ -75,5 +80,13 @@ void Executor::render() {
                 }
             }
         }
+    }
+
+    if (!isRunning) {
+        int ww, wh;
+        SDL_GetWindowSize(Game::instance->window, &ww, &wh);
+
+        SDL_Rect dRect = { 0, 0, ww, wh };
+        SDL_RenderCopy(Game::instance->renderer, this->hangOn, NULL, &dRect);
     }
 }

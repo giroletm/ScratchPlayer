@@ -8,7 +8,7 @@ using json = nlohmann::json;
 
 int main(int argc, char* argv[])
 {
-    ZipFile *zfile = new ZipFile("Test.sb3");
+    ZipFile *zfile = new ZipFile("Test2.sb3");
 
     u8* content = 0;;
     size_t size;

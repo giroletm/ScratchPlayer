@@ -137,19 +137,78 @@ Sprite::Sprite(json data) {
 }
 
 Variable::Variable(std::string id, json data) {
+	this->uniqueID = getCharsForString(id);
 
+	this->name = getCharsForJSON(data[0]);
+	this->value = getCharsForJSON(data[1]);
+
+
+	#ifdef _DEBUG
+	printf("\t\t- Variable \"%s\" (\"%s\") = \"%s\".\n", this->name, this->uniqueID, this->value);
+	#endif
 }
 
 List::List(std::string id, json data) {
+	this->uniqueID = getCharsForString(id);
 
+	this->name = getCharsForJSON(data[0]);
+
+	json valuesData = data[1];
+	int valuesCount = valuesData.size();
+	for (int i = 0; i < valuesCount; i++) {
+		this->values.push_back(getCharsForJSON(valuesData[i]));
+	}
+
+
+	#ifdef _DEBUG
+	printf("\t\t- List \"%s\" (\"%s\") = [", this->name, this->uniqueID);
+	for (int i = 0; i < valuesCount; i++) {
+		printf("\"%s\"%s", this->values[i], ((i == valuesCount - 1) ? "" : ", "));
+	}
+	printf("]\n");
+	#endif
 }
 
 Broadcast::Broadcast(std::string id, json data) {
+	this->uniqueID = getCharsForString(id);
+	this->name = getCharsForJSON(data);
 
+
+	#ifdef _DEBUG
+	printf("\t\t- Broadcast \"%s\" (\"%s\").\n", this->name, this->uniqueID);
+	#endif
 }
 
 Block::Block(std::string id, json data) {
+	this->uniqueID = getCharsForString(id);
 
+	this->opcode = getCharsForJSON(data["opcode"]);
+	this->shadow = data["shadow"];
+	this->topLevel = data["topLevel"];
+
+	if (data["parent"].is_null()) {
+		this->x = data["x"];
+		this->y = data["y"];
+	}
+
+
+	#ifdef _DEBUG
+	printf("\t\t- Block \"%s\" (\"%s\").\n", this->opcode, this->uniqueID);
+	#endif
+
+
+	json inputsData = data["inputs"];
+	for (auto i = inputsData.begin(); i != inputsData.end(); i++) {
+		this->inputs.push_back(new Input(i.key(), i.value()));
+	}
+	
+
+	json fieldsData = data["fields"];
+	for (auto i = fieldsData.begin(); i != fieldsData.end(); i++) {
+		this->fields.push_back(new Field(i.key(), i.value()));
+	}
+
+	// TODO: Custom blocks "mutation" element
 }
 
 Input::Input(std::string id, json data) {
@@ -232,19 +291,53 @@ Sprite::~Sprite() {
 }
 
 Variable::~Variable() {
+	if (this->uniqueID)
+		delete[] this->uniqueID;
 
+	if (this->name)
+		delete[] this->name;
+
+	if (this->value)
+		delete[] this->value;
 }
 
 List::~List() {
+	if (this->uniqueID)
+		delete[] this->uniqueID;
 
+	if (this->name)
+		delete[] this->name;
+
+	int valuesount = this->values.size();
+	for (int i = 0; i < valuesount; i++) {
+		if (this->values[i])
+			delete[] this->values[i];
+	}
 }
 
 Broadcast::~Broadcast() {
+	if (this->uniqueID)
+		delete[] this->uniqueID;
 
+	if (this->name)
+		delete[] this->name;
 }
 
 Block::~Block() {
+	if (this->uniqueID)
+		delete[] this->uniqueID;
 
+	if (this->opcode)
+		delete[] this->opcode;
+
+	int inputsCount = this->inputs.size();
+	int fieldsCount = this->fields.size();
+
+	for (int i = 0; i < inputsCount; i++)
+		delete this->inputs[i];
+
+	for (int i = 0; i < fieldsCount; i++)
+		delete this->fields[i];
 }
 
 Input::~Input() {
@@ -291,6 +384,11 @@ Broadcast* Sprite::getBroadcastByUniqueID(const char* uniqueID) {
 }
 
 Block* Sprite::getBlockByUniqueID(const char* uniqueID) {
+	int blockCount = this->blocks.size();
+	for (int i = 0; i < blockCount; i++) {
+		if (strcmp(this->blocks[i]->uniqueID, uniqueID) == 0) return this->blocks[i];
+	}
+
 	return 0;
 }
 

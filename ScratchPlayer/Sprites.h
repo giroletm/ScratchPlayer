@@ -33,6 +33,10 @@ public:
 	Sprite** sprites;
 
 	Sprite* getSpriteByName(const char* name);
+
+	Variable* getVariableByUniqueID(const char* uniqueID, int spriteID);
+	List* getListByUniqueID(const char* uniqueID, int spriteID);
+	Broadcast* getBroadcastByUniqueID(const char* uniqueID, int spriteID);
 };
 
 class Sprite {

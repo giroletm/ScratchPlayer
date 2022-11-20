@@ -446,20 +446,64 @@ Sound::~Sound() {
 
 
 Sprite* Targets::getSpriteByName(const char* name) {
+	int spriteCount = data.size();
+	for (int i = 0; i < spriteCount; i++) {
+		if (strcmp(this->sprites[i]->name, name) == 0) return this->sprites[i];
+	}
+
+	return 0;
+}
+
+Variable* Targets::getVariableByUniqueID(const char* uniqueID, int spriteID) {
+	Variable* bgVar = this->sprites[0]->getVariableByUniqueID(uniqueID);
+	if (bgVar) return bgVar;
+	else if(spriteID != 0) return this->sprites[spriteID]->getVariableByUniqueID(uniqueID);
+
+	return 0;
+}
+
+List* Targets::getListByUniqueID(const char* uniqueID, int spriteID) {
+	List* bgList = this->sprites[0]->getListByUniqueID(uniqueID);
+	if (bgList) return bgList;
+	else if (spriteID != 0) return this->sprites[spriteID]->getListByUniqueID(uniqueID);
+
+	return 0;
+}
+
+Broadcast* Targets::getBroadcastByUniqueID(const char* uniqueID, int spriteID) {
+	Broadcast* bgBC = this->sprites[0]->getBroadcastByUniqueID(uniqueID);
+	if (bgBC) return bgBC;
+	else if (spriteID != 0) return this->sprites[spriteID]->getBroadcastByUniqueID(uniqueID);
+
 	return 0;
 }
 
 
 
 Variable* Sprite::getVariableByUniqueID(const char* uniqueID) {
+	int varsCount = this->variables.size();
+	for (int i = 0; i < varsCount; i++) {
+		if (strcmp(this->variables[i]->uniqueID, uniqueID) == 0) return this->variables[i];
+	}
+
 	return 0;
 }
 
 List* Sprite::getListByUniqueID(const char* uniqueID) {
+	int listsCount = this->lists.size();
+	for (int i = 0; i < listsCount; i++) {
+		if (strcmp(this->lists[i]->uniqueID, uniqueID) == 0) return this->lists[i];
+	}
+
 	return 0;
 }
 
 Broadcast* Sprite::getBroadcastByUniqueID(const char* uniqueID) {
+	int broadcastsCount = this->broadcasts.size();
+	for (int i = 0; i < broadcastsCount; i++) {
+		if (strcmp(this->broadcasts[i]->uniqueID, uniqueID) == 0) return this->broadcasts[i];
+	}
+
 	return 0;
 }
 
@@ -473,14 +517,29 @@ Block* Sprite::getBlockByUniqueID(const char* uniqueID) {
 }
 
 Comment* Sprite::getCommentByUniqueID(const char* uniqueID) {
+	int commentsCount = this->comments.size();
+	for (int i = 0; i < commentsCount; i++) {
+		if (strcmp(this->comments[i]->uniqueID, uniqueID) == 0) return this->comments[i];
+	}
+
 	return 0;
 }
 
 Costume* Sprite::getCostumeByName(const char* name) {
+	int costumesCount = this->costumes.size();
+	for (int i = 0; i < costumesCount; i++) {
+		if (strcmp(this->costumes[i]->name, name) == 0) return this->costumes[i];
+	}
+
 	return 0;
 }
 
 Sound* Sprite::getSoundByName(const char* name) {
+	int soundsCount = this->sounds.size();
+	for (int i = 0; i < soundsCount; i++) {
+		if (strcmp(this->sounds[i]->name, name) == 0) return this->sounds[i];
+	}
+
 	return 0;
 }
 

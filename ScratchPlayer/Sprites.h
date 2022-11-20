@@ -29,13 +29,17 @@ public:
 	Targets(json content);
 	~Targets();
 
-	Sprite* sprites;
+	json data;
+	Sprite** sprites;
 
 	Sprite* getSpriteByName(const char* name);
 };
 
 class Sprite {
 public:
+	Sprite(json data);
+	~Sprite();
+
 	bool isStage;
 	char* name;
 
@@ -50,7 +54,6 @@ public:
 
 	std::vector<Sound*> sounds;
 	int volume;
-	int tempo;
 
 	int layerOrder;
 
@@ -64,6 +67,7 @@ public:
 	char* rotationStyle;
 
 	// Only if isStage
+	int tempo;
 	int videoTransparency;
 	char* videoState;
 	char* textToSpeechLanguage;
@@ -81,6 +85,9 @@ public:
 
 class Variable {
 public:
+	Variable(json data);
+	~Variable();
+
 	char* uniqueID;
 
 	char* name;
@@ -89,6 +96,9 @@ public:
 
 class List {
 public:
+	List(json data);
+	~List();
+
 	char* uniqueID;
 
 	char* name;
@@ -97,6 +107,9 @@ public:
 
 class Broadcast {
 public:
+	Broadcast(json data);
+	~Broadcast();
+
 	char* uniqueID;
 
 	char* name;
@@ -104,6 +117,9 @@ public:
 
 class Block {
 public:
+	Block(json data);
+	~Block();
+
 	char* uniqueID;
 
 	char* opcode;
@@ -123,20 +139,29 @@ public:
 
 class Input {
 public:
+	Input(json data);
+	~Input();
+
 	char* name;
 
-	json* content;
+	json content;
 };
 
 class Field {
 public:
+	Field(json data);
+	~Field();
+
 	char* name;
 
-	json* content;
+	json content;
 };
 
 class Comment {
 public:
+	Comment(json data);
+	~Comment();
+
 	char* uniqueID;
 
 	Block* blockId;
@@ -154,6 +179,9 @@ public:
 
 class Asset {
 public:
+	Asset(json data);
+	~Asset();
+
 	char* name;
 	char* dataFormat;
 	char* assetID;
@@ -162,6 +190,9 @@ public:
 
 class Costume : public Asset {
 public:
+	Costume(json data);
+	~Costume();
+
 	int bitmapResolution;
 
 	int rotationCenterX;
@@ -170,6 +201,9 @@ public:
 
 class Sound : public Asset {
 public:
+	Sound(json data);
+	~Sound();
+
 	char* format;
 	int rate;
 	int sampleCount;

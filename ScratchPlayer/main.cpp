@@ -1,9 +1,10 @@
 #include <iostream>
 
-#include "ZipFile.h"
-
 #include "json.hpp"
 using json = nlohmann::json;
+
+#include "ZipFile.h"
+#include "Sprites.h"
 
 int main(int argc, char* argv[])
 {
@@ -15,8 +16,10 @@ int main(int argc, char* argv[])
 
     if (error == 0) {
 
-        json data = json::parse((char*)content);
-        std::cout << data["targets"] << std::endl;
+        Targets *targets = new Targets(json::parse((char*)content));
+        //std::cout << data["targets"] << std::endl;
+
+        delete targets;
     }
 
     if(content)

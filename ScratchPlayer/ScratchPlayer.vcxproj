@@ -72,19 +72,15 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <AdditionalIncludeDirectories>$(ProjectDir)\include;$(SolutionDir)\zlib-win-build\include;$(SolutionDir)\libzip-win-build\include;$(SolutionDir)\json\single_include\nlohmann;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <AdditionalIncludeDirectories>$(ProjectDir)\include;$(SolutionDir)\zlib-win-build\include;$(SolutionDir)\libzip-win-build\include;$(SolutionDir)\json\single_include\nlohmann;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <AdditionalIncludeDirectories>$(ProjectDir)\include;$(SolutionDir)\zlib-win-build\include;$(SolutionDir)\libzip-win-build\include;$(SolutionDir)\json\single_include\nlohmann;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <AdditionalIncludeDirectories>$(ProjectDir)\include;$(SolutionDir)\zlib-win-build\include;$(SolutionDir)\libzip-win-build\include;$(SolutionDir)\json\single_include\nlohmann;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -92,13 +88,13 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)\include;$(SolutionDir)\zlib-win-build\include;$(SolutionDir)\libzip-win-build\include;$(SolutionDir)\json\single_include\nlohmann;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)\include;$(SolutionDir)\zlib-win-build\include;$(SolutionDir)\libzip-win-build\include;$(SolutionDir)\json\single_include\nlohmann;$(ProjectDir)\include;$(SolutionDir)\SDL2-2.24.1\include;$(SolutionDir)\SDL2_image-2.6.2\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)\zlib-win-build\build-VS2019\Debug;$(SolutionDir)\libzip-win-build\build-VS2019\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>libz-static.lib;libzip-static.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)\zlib-win-build\build-VS2019\Debug;$(SolutionDir)\libzip-win-build\build-VS2019\Debug;$(SolutionDir)\SDL2-2.24.1\lib\x86;$(SolutionDir)\SDL2_image-2.6.2\lib\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>libz-static.lib;libzip-static.lib;SDL2.lib;SDL2main.lib;SDL2_image.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -109,15 +105,15 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)\include;$(SolutionDir)\zlib-win-build\include;$(SolutionDir)\libzip-win-build\include;$(SolutionDir)\json\single_include\nlohmann;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)\include;$(SolutionDir)\zlib-win-build\include;$(SolutionDir)\libzip-win-build\include;$(SolutionDir)\json\single_include\nlohmann;$(ProjectDir)\include;$(SolutionDir)\SDL2-2.24.1\include;$(SolutionDir)\SDL2_image-2.6.2\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)\zlib-win-build\build-VS2019\Release;$(SolutionDir)\libzip-win-build\build-VS2019\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>libz-static.lib;libzip-static.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)\zlib-win-build\build-VS2019\Release;$(SolutionDir)\libzip-win-build\build-VS2019\Release;$(SolutionDir)\SDL2-2.24.1\lib\x86;$(SolutionDir)\SDL2_image-2.6.2\lib\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>libz-static.lib;libzip-static.lib;SDL2.lib;SDL2main.lib;SDL2_image.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -126,13 +122,13 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)\include;$(SolutionDir)\zlib-win-build\include;$(SolutionDir)\libzip-win-build\include;$(SolutionDir)\json\single_include\nlohmann;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)\include;$(SolutionDir)\zlib-win-build\include;$(SolutionDir)\libzip-win-build\include;$(SolutionDir)\json\single_include\nlohmann;$(ProjectDir)\include;$(SolutionDir)\SDL2-2.24.1\include;$(SolutionDir)\SDL2_image-2.6.2\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)\zlib-win-build\build-VS2019\x64\Debug;$(SolutionDir)\libzip-win-build\build-VS2019\x64\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>libz-static.lib;libzip-static.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)\zlib-win-build\build-VS2019\x64\Debug;$(SolutionDir)\libzip-win-build\build-VS2019\x64\Debug;$(SolutionDir)\SDL2-2.24.1\lib\x64;$(SolutionDir)\SDL2_image-2.6.2\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>libz-static.lib;libzip-static.lib;SDL2.lib;SDL2main.lib;SDL2_image.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -143,19 +139,20 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)\include;$(SolutionDir)\zlib-win-build\include;$(SolutionDir)\libzip-win-build\include;$(SolutionDir)\json\single_include\nlohmann;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)\include;$(SolutionDir)\zlib-win-build\include;$(SolutionDir)\libzip-win-build\include;$(SolutionDir)\json\single_include\nlohmann;$(ProjectDir)\include;$(SolutionDir)\SDL2-2.24.1\include;$(SolutionDir)\SDL2_image-2.6.2\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)\zlib-win-build\build-VS2019\x64\Release;$(SolutionDir)\libzip-win-build\build-VS2019\x64\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>libz-static.lib;libzip-static.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)\zlib-win-build\build-VS2019\x64\Release;$(SolutionDir)\libzip-win-build\build-VS2019\x64\Release;$(SolutionDir)\SDL2-2.24.1\lib\x64;$(SolutionDir)\SDL2_image-2.6.2\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>libz-static.lib;libzip-static.lib;SDL2.lib;SDL2main.lib;SDL2_image.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Executor.cpp" />
+    <ClCompile Include="Game.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Targets.cpp" />
     <ClCompile Include="ZipFile.cpp" />
@@ -163,6 +160,7 @@
   <ItemGroup>
     <ClInclude Include="common.h" />
     <ClInclude Include="Executor.h" />
+    <ClInclude Include="Game.h" />
     <ClInclude Include="Targets.h" />
     <ClInclude Include="ZipFile.h" />
   </ItemGroup>

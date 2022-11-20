@@ -10,4 +10,6 @@ public:
 
 	ZipFile* zfile;
 	Targets* targets;
+
+	void render();
 };

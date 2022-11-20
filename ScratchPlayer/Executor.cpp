@@ -20,3 +20,7 @@ Executor::~Executor() {
     delete targets;
     delete zfile;
 }
+
+void Executor::render() {
+
+}

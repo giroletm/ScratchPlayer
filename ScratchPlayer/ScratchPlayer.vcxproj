@@ -156,12 +156,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="Sprites.cpp" />
+    <ClCompile Include="Targets.cpp" />
     <ClCompile Include="ZipFile.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="common.h" />
-    <ClInclude Include="Sprites.h" />
+    <ClInclude Include="Targets.h" />
     <ClInclude Include="ZipFile.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

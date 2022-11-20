@@ -1,7 +1,7 @@
 #include <iostream>
 #include <string>
 
-#include "Sprites.h"
+#include "Targets.h"
 
 
 char* getCharsForString(std::string str) {

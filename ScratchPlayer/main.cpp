@@ -4,7 +4,7 @@
 using json = nlohmann::json;
 
 #include "ZipFile.h"
-#include "Sprites.h"
+#include "Targets.h"
 
 int main(int argc, char* argv[])
 {

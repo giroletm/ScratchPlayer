@@ -47,6 +47,10 @@ void Game::handleEvents() {
 			isRunning = false;
 			break;
 		}
+		case SDL_MOUSEBUTTONDOWN: {
+			if (SDL_GetMouseState(NULL, NULL) & SDL_BUTTON(SDL_BUTTON_LEFT)) exec->isRunning = true;
+			break;
+		}
 		default: {
 			break;
 		}

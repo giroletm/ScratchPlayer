@@ -23,6 +23,8 @@ class Block;
 class Input;
 class Field;
 
+class BlockSet;
+
 class Comment;
 
 class Costume;
@@ -133,6 +135,8 @@ public:
 	~Block();
 
 	enum OpCode {
+		unsupported = 0,
+
 		// Motion
 		motion_movesteps = 1,
 		motion_turnright = 2,
@@ -184,113 +188,111 @@ public:
 		sound_playuntildone = 44,
 		sound_sounds_menu = 45,
 		sound_play = 46,
-		sound_sounds_menu = 47,
-		sound_stopallsounds = 48,
-		sound_changeeffectby = 49,
-		sound_cleareffects = 50,
-		sound_changevolumeby = 51,
-		sound_setvolumeto = 52,
-		sound_volume = 53,
+		sound_stopallsounds = 47,
+		sound_changeeffectby = 48,
+		sound_cleareffects = 49,
+		sound_changevolumeby = 50,
+		sound_setvolumeto = 51,
+		sound_volume = 52,
 
 		// Events
-		event_whenflagclicked = 54,
-		event_whenkeypressed = 55,
-		event_whenthisspriteclicked = 56,
-		event_whenbackdropswitchesto = 57,
-		event_whengreaterthan = 58,
-		event_whenbroadcastreceived = 59,
-		event_broadcast = 60,
-		event_broadcastandwait = 61,
+		event_whenflagclicked = 53,
+		event_whenkeypressed = 54,
+		event_whenthisspriteclicked = 55,
+		event_whenbackdropswitchesto = 56,
+		event_whengreaterthan = 57,
+		event_whenbroadcastreceived = 58,
+		event_broadcast = 59,
+		event_broadcastandwait = 60,
 
 		// Control
-		control_wait = 62,
-		control_repeat = 63,
-		control_forever = 64,
-		control_if = 65,
-		control_if_else = 66,
-		control_wait_until = 67,
-		control_repeat_until = 68,
-		control_stop = 69,
-		control_start_as_clone = 70,
-		control_create_clone_of = 71,
-		control_create_clone_of_menu = 72,
-		control_delete_this_clone = 73,
+		control_wait = 61,
+		control_repeat = 62,
+		control_forever = 63,
+		control_if = 64,
+		control_if_else = 65,
+		control_wait_until = 66,
+		control_repeat_until = 67,
+		control_stop = 68,
+		control_start_as_clone = 69,
+		control_create_clone_of = 70,
+		control_create_clone_of_menu = 71,
+		control_delete_this_clone = 72,
 
 
 		// Sensing
-		sensing_touchingobject = 74,
-		sensing_touchingobjectmenu = 75,
-		sensing_touchingcolor = 76,
-		sensing_coloristouchingcolor = 77,
-		sensing_distanceto = 78,
-		sensing_distancetomenu = 79,
-		sensing_askandwait = 80,
-		sensing_answer = 81,
-		sensing_keypressed = 82,
-		sensing_keyoptions = 83,
-		sensing_mousedown = 84,
-		sensing_mousex = 85,
-		sensing_mousey = 86,
-		sensing_setdragmode = 87,
-		sensing_loudness = 88,
-		sensing_timer = 89,
-		sensing_resettimer = 90,
-		sensing_of = 91,
-		sensing_of_object_menu = 92,
-		sensing_current = 93,
-		sensing_dayssince2000 = 94,
-		sensing_username = 95,
+		sensing_touchingobject = 73,
+		sensing_touchingobjectmenu = 74,
+		sensing_touchingcolor = 75,
+		sensing_coloristouchingcolor = 76,
+		sensing_distanceto = 77,
+		sensing_distancetomenu = 78,
+		sensing_askandwait = 79,
+		sensing_answer = 80,
+		sensing_keypressed = 81,
+		sensing_keyoptions = 82,
+		sensing_mousedown = 83,
+		sensing_mousex = 84,
+		sensing_mousey = 85,
+		sensing_setdragmode = 86,
+		sensing_loudness = 87,
+		sensing_timer = 88,
+		sensing_resettimer = 89,
+		sensing_of = 90,
+		sensing_of_object_menu = 91,
+		sensing_current = 92,
+		sensing_dayssince2000 = 93,
+		sensing_username = 94,
 
 		// Operators
-		operator_add = 96,
-		operator_subtract = 97,
-		operator_multiply = 98,
-		operator_divide = 99,
-		operator_random = 100,
-		operator_gt = 101,
-		operator_lt = 102,
-		operator_equals = 103,
-		operator_and = 104,
-		operator_or = 105,
-		operator_not = 106,
-		operator_join = 107,
-		operator_letter_of = 108,
-		operator_length = 109,
-		operator_contains = 110,
-		operator_mod = 111,
-		operator_round = 112,
-		operator_mathop = 113,
+		operator_add = 95,
+		operator_subtract = 96,
+		operator_multiply = 97,
+		operator_divide = 98,
+		operator_random = 99,
+		operator_gt = 100,
+		operator_lt = 101,
+		operator_equals = 102,
+		operator_and = 103,
+		operator_or = 104,
+		operator_not = 105,
+		operator_join = 106,
+		operator_letter_of = 107,
+		operator_length = 108,
+		operator_contains = 109,
+		operator_mod = 110,
+		operator_round = 111,
+		operator_mathop = 112,
 
 		// Variables
 		/*Alone variable block*/
-		data_setvariableto = 114,
-		data_changevariableby = 115,
-		data_showvariable = 116,
-		data_hidevariable = 117,
-		data_addtolist = 118,
-		data_deleteoflist = 119,
-		data_deletealloflist = 120,
-		data_insertatlist = 121,
-		data_replaceitemoflist = 122,
-		data_itemoflist = 123,
-		data_itemnumoflist = 124,
-		data_lengthoflist = 125,
-		data_listcontainsitem = 126,
-		data_showlist = 127,
-		data_hidelist = 128,
+		data_setvariableto = 113,
+		data_changevariableby = 114,
+		data_showvariable = 115,
+		data_hidevariable = 116,
+		data_addtolist = 117,
+		data_deleteoflist = 118,
+		data_deletealloflist = 119,
+		data_insertatlist = 120,
+		data_replaceitemoflist = 121,
+		data_itemoflist = 122,
+		data_itemnumoflist = 123,
+		data_lengthoflist = 124,
+		data_listcontainsitem = 125,
+		data_showlist = 126,
+		data_hidelist = 127,
 
 		// My Blocks
-		procedures_definition = 129,
-		procedures_prototype = 130,
+		procedures_definition = 128,
+		procedures_prototype = 129,
+		procedures_call = 130,
 		argument_reporter_string_number = 131,
-		argument_reporter_string_number = 132,
-		argument_reporter_boolean = 133,
-		procedures_call = 134,
+		argument_reporter_boolean = 132,
 	};
 
 	char* uniqueID;
 
-	char* opcode;
+	OpCode opcode;
 
 	Block* next;
 	Block* parent;
@@ -305,6 +307,8 @@ public:
 	int y;
 
 	void doParenting(Sprite* sprite, json data);
+
+	OpCode getOpCode(char* opcode);
 };
 
 class BlockSet {
@@ -317,6 +321,8 @@ public:
 
 	int framesToWait;
 	int scheduledFrameAction;
+
+	void execute();
 };
 
 class Input {

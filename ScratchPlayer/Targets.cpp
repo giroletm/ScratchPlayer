@@ -119,8 +119,8 @@ Sprite::Sprite(json data) {
 		j++;
 	}
 	for (int i = 0; i < blocksCount; i++) {
-		if (this->blocks[j]->parent = 0) {
-			this->blockSets.push_back(new BlockSet(this->blocks[j]));
+		if (this->blocks[i]->parent == 0) {
+			this->blockSets.push_back(new BlockSet(this->blocks[i]));
 		}
 	}
 
@@ -189,10 +189,256 @@ Broadcast::Broadcast(std::string id, json data) {
 	#endif
 }
 
+
+
+static const char* motionCodes[] = {
+	"movesteps",
+	"turnright",
+	"turnleft",
+	"goto",
+	"goto_menu",
+	"gotoxy",
+	"glideto",
+	"glideto_menu",
+	"glidesecstoxy",
+	"pointindirection",
+	"pointtowards",
+	"pointtowards_menu",
+	"changexby",
+	"setx",
+	"changeyby",
+	"sety",
+	"ifonedgebounce",
+	"setrotationstyle",
+	"xposition",
+	"yposition",
+	"direction"
+};
+
+static const char* looksCodes[] = {
+	"sayforsecs",
+	"say",
+	"thinkforsecs",
+	"think",
+	"switchcostumeto",
+	"costume",
+	"nextcostume",
+	"switchbackdropto",
+	"backdrops",
+	"nextbackdrop",
+	"changesizeby",
+	"setsizeto",
+	"changeeffectby",
+	"seteffectto",
+	"cleargraphiceffects",
+	"show",
+	"hide",
+	"gotofrontback",
+	"goforwardbackwardlayers",
+	"costumenumbername",
+	"backdropnumbername",
+	"size"
+};
+
+static const char* soundCodes[] = {
+	"playuntildone",
+	"sounds_menu",
+	"play",
+	"sounds_menu",
+	"stopallsounds",
+	"changeeffectby",
+	"cleareffects",
+	"changevolumeby",
+	"setvolumeto",
+	"volume"
+};
+
+static const char* eventCodes[] = {
+	"whenflagclicked",
+	"whenkeypressed",
+	"whenthisspriteclicked",
+	"whenbackdropswitchesto",
+	"whengreaterthan",
+	"whenbroadcastreceived",
+	"broadcast",
+	"broadcastandwait"
+};
+
+static const char* controlCodes[] = {
+	"wait",
+	"repeat",
+	"forever",
+	"if",
+	"if_else",
+	"wait_until",
+	"repeat_until",
+	"stop",
+	"start_as_clone",
+	"create_clone_of",
+	"create_clone_of_menu",
+	"delete_this_clone"
+};
+
+static const char* sensingCodes[] = {
+	"touchingobject",
+	"touchingobjectmenu",
+	"touchingcolor",
+	"coloristouchingcolor",
+	"distanceto",
+	"distancetomenu",
+	"askandwait",
+	"answer",
+	"keypressed",
+	"keyoptions",
+	"mousedown",
+	"mousex",
+	"mousey",
+	"setdragmode",
+	"loudness",
+	"timer",
+	"resettimer",
+	"of",
+	"of_object_menu",
+	"current",
+	"dayssince2000",
+	"username"
+};
+
+static const char* operatorCodes[] = {
+	"add",
+	"subtract",
+	"multiply",
+	"divide",
+	"random",
+	"gt",
+	"lt",
+	"equals",
+	"and",
+	"or",
+	"not",
+	"join",
+	"letter_of",
+	"length",
+	"contains",
+	"mod",
+	"round",
+	"mathop"
+};
+
+static const char* dataCodes[] = {
+	"setvariableto",
+	"changevariableby",
+	"showvariable",
+	"hidevariable",
+	"addtolist",
+	"deleteoflist",
+	"deletealloflist",
+	"insertatlist",
+	"replaceitemoflist",
+	"itemoflist",
+	"itemnumoflist",
+	"lengthoflist",
+	"listcontainsitem",
+	"showlist",
+	"hidelist"
+};
+
+static const char* proceduresCodes[] = {
+	"definition",
+	"prototype",
+	"call",
+};
+
+static const char* argumentCodes[] = {
+	"reporter_string_number",
+	"reporter_string_number",
+	"reporter_boolean",
+};
+
+static const char* codesCats[]{
+	"motion",
+	"looks",
+	"sound",
+	"event",
+	"control",
+	"sensing",
+	"operator",
+	"data",
+	"procedures",
+	"argument",
+};
+
+static const char** codesVals[]{
+	(const char**)&motionCodes,
+	(const char**)&looksCodes,
+	(const char**)&soundCodes,
+	(const char**)&eventCodes,
+	(const char**)&controlCodes,
+	(const char**)&sensingCodes,
+	(const char**)&operatorCodes,
+	(const char**)&dataCodes,
+	(const char**)&proceduresCodes,
+	(const char**)&argumentCodes,
+};
+
+static Block::OpCode codesBegins[]{
+	Block::OpCode::motion_movesteps,
+	Block::OpCode::looks_sayforsecs,
+	Block::OpCode::sound_playuntildone,
+	Block::OpCode::event_whenflagclicked,
+	Block::OpCode::control_wait,
+	Block::OpCode::sensing_touchingobject,
+	Block::OpCode::operator_add,
+	Block::OpCode::data_setvariableto,
+	Block::OpCode::procedures_definition,
+	Block::OpCode::argument_reporter_string_number,
+};
+
+static const int blocksCount[]{
+	(sizeof(motionCodes) / sizeof(const char*)),
+	(sizeof(soundCodes) / sizeof(const char*)),
+	(sizeof(soundCodes) / sizeof(const char*)),
+	(sizeof(eventCodes) / sizeof(const char*)),
+	(sizeof(controlCodes) / sizeof(const char*)),
+	(sizeof(sensingCodes) / sizeof(const char*)),
+	(sizeof(operatorCodes) / sizeof(const char*)),
+	(sizeof(dataCodes) / sizeof(const char*)),
+	(sizeof(proceduresCodes) / sizeof(const char*)),
+	(sizeof(argumentCodes) / sizeof(const char*))
+};
+
+Block::OpCode Block::getOpCode(char* opcode) {
+	int catsCount = sizeof(codesCats) / sizeof(const char**);
+
+	int num = 0;
+	for (int i = 0; i < catsCount; i++) {
+		int countLen = strlen(codesCats[i]);
+		if (strncmp(opcode, codesCats[i], countLen) == 0) {
+			const char** currentTbl = codesVals[i];
+			int blockCount = blocksCount[i];
+
+			for (int j = 0; j < blockCount; j++) {
+				if (strcmp(currentTbl[j], opcode + (countLen + 1)) == 0) {
+					num = codesBegins[i] + j;
+					break;
+				}
+			}
+
+			break;
+		}
+
+	}
+
+	return (Block::OpCode)num;
+}
+
 Block::Block(std::string id, json data) {
 	this->uniqueID = getCharsForString(id);
 
-	this->opcode = getCharsForJSON(data["opcode"]);
+	char* rawOpCode = getCharsForJSON(data["opcode"]);
+	this->opcode = getOpCode(rawOpCode);;
+	delete[] rawOpCode;
+	
 	this->shadow = data["shadow"];
 	this->topLevel = data["topLevel"];
 
@@ -210,7 +456,7 @@ Block::Block(std::string id, json data) {
 
 
 	#ifdef _DEBUG
-	printf("\t\t- Block \"%s\" (\"%s\").\n", this->opcode, this->uniqueID);
+	printf("\t\t- Block \"%d\" (\"%s\").\n", this->opcode, this->uniqueID);
 	#endif
 
 
@@ -418,9 +664,6 @@ Block::~Block() {
 	if (this->uniqueID)
 		delete[] this->uniqueID;
 
-	if (this->opcode)
-		delete[] this->opcode;
-
 	int inputsCount = this->inputs.size();
 	int fieldsCount = this->fields.size();
 
@@ -592,4 +835,14 @@ void Block::doParenting(Sprite* sprite, json data) {
 		delete[] nName;
 	}
 	else this->next = 0;
+}
+
+void BlockSet::execute() {
+	if (currentBlock == 0) {
+		bool triggered = false;
+
+		
+
+		if (triggered) currentBlock = firstBlock->next;
+	}
 }

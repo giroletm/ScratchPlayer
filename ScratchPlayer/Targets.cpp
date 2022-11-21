@@ -118,6 +118,11 @@ Sprite::Sprite(json data) {
 		this->blocks[j]->doParenting(this, i.value());
 		j++;
 	}
+	for (int i = 0; i < blocksCount; i++) {
+		if (this->blocks[j]->parent = 0) {
+			this->blockSets.push_back(new BlockSet(this->blocks[j]));
+		}
+	}
 
 	#ifdef _DEBUG
 	printf("\tFound %d comments.\n", commentsCount);
@@ -221,6 +226,12 @@ Block::Block(std::string id, json data) {
 	}
 
 	// TODO: Custom blocks "mutation" element
+}
+
+BlockSet::BlockSet(Block* block) {
+	this->firstBlock = block;
+	this->currentBlock = 0;
+	this->framesToWait = 0;
 }
 
 Input::Input(std::string id, json data) {
@@ -339,6 +350,7 @@ Sprite::~Sprite() {
 	int varsCount = this->variables.size();
 	int listsCount = this->lists.size();
 	int broadcastsCount = this->broadcasts.size();
+	int blockSetsCount = this->blockSets.size();
 	int blocksCount = this->blocks.size();
 	int commentsCount = this->comments.size();
 	int costumesCount = this->costumes.size();
@@ -353,8 +365,11 @@ Sprite::~Sprite() {
 	for (int i = 0; i < broadcastsCount; i++)
 		delete this->broadcasts[i];
 
-	for (int i = 0; i < blocksCount; i++)
+	for (int i = 0; i < blockSetsCount; i++)
 		delete this->blocks[i];
+
+	for (int i = 0; i < blocksCount; i++)
+		delete this->blockSets[i];
 
 	for (int i = 0; i < commentsCount; i++)
 		delete this->comments[i];
@@ -415,6 +430,10 @@ Block::~Block() {
 	for (int i = 0; i < fieldsCount; i++)
 		delete this->fields[i];
 }
+
+BlockSet::~BlockSet() {
+}
+
 
 Input::~Input() {
 	if (this->name)

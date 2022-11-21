@@ -32,6 +32,26 @@ Executor::~Executor() {
     instance = 0;
 }
 
+void Executor::executeBlocks() {
+    int spriteCount = targets->data.size();
+    for (int spriteID = 0; spriteID < spriteCount; spriteID++) {
+        Sprite* currentSprite = targets->sprites[spriteID];
+
+        int blockSetCount = currentSprite->blockSets.size();
+        for (int bSID = 0; bSID < blockSetCount; bSID++) {
+            BlockSet* currentBS = currentSprite->blockSets[spriteID];
+
+            if (currentBS->currentBlock == 0) {
+
+
+                continue;
+            }
+
+
+        }
+    }
+}
+
 void Executor::render() {
     int spriteCount = targets->data.size();
     int minLayer = INT_MAX;

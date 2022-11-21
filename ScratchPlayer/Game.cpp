@@ -59,6 +59,8 @@ void Game::handleEvents() {
 
 void Game::update() {
 	frameCount++;
+
+	exec->executeBlocks();
 }
 
 void Game::render() {

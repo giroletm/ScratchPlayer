@@ -17,4 +17,5 @@ public:
 	SDL_Texture* hangOn;
 
 	void render();
+	void executeBlocks();
 };

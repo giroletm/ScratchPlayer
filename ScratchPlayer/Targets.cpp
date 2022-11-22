@@ -940,6 +940,12 @@ void BlockSet::execute(Sprite* parentSprite) {
 				}
 				case Block::OpCode::event_whenkeypressed:
 				{
+					char* key = getCharsForJSON(firstBlock->getFieldByName("KEY_OPTION")->content[0]);
+					KeyHandle* kh = Game::instance->inputHandler.getKeyHandleByName(key);
+					delete[] key;
+
+					if (kh->pressed) triggered = true;
+
 					break;
 				}
 				case Block::OpCode::event_whenthisspriteclicked:

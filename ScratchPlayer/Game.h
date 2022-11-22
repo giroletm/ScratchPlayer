@@ -7,6 +7,8 @@
 #include "SDL.h"
 #include "SDL_image.h"
 
+#include "InputHandler.h";
+
 
 class Executor;
 
@@ -16,6 +18,7 @@ public:
 	~Game();
 
 	Executor* exec;
+	InputHandler inputHandler;
 
 	static Game* instance;
 

@@ -29,7 +29,7 @@ int Game::init(const char* title, int xpos, int ypos, int width, int height, u32
 
 		isRunning = true;
 
-		exec = new Executor("Test10.sb3");
+		exec = new Executor("Test11.sb3");
 
 		return 0;
 	}
@@ -39,16 +39,51 @@ int Game::init(const char* title, int xpos, int ypos, int width, int height, u32
 }
 
 void Game::handleEvents() {
+	inputHandler.updateKeys();
+
 	SDL_Event event;
 	SDL_PollEvent(&event);
+
+	inputHandler.updateMouse();
 
 	switch (event.type) {
 		case SDL_QUIT: {
 			isRunning = false;
 			break;
 		}
+		case SDL_KEYDOWN: {
+			inputHandler.keyStateChanged(event.key.keysym.sym, false);
+			printf("Pressed: %d\n", event.key.keysym.sym);
+			break;
+		}
+		case SDL_KEYUP: {
+			inputHandler.keyStateChanged(event.key.keysym.sym, true);
+			break;
+		}
 		case SDL_MOUSEBUTTONDOWN: {
-			if (SDL_GetMouseState(NULL, NULL) & SDL_BUTTON(SDL_BUTTON_LEFT)) exec->isRunning = true;
+			u32 buttonState = SDL_GetMouseState(NULL, NULL);
+
+			if (buttonState & SDL_BUTTON(SDL_BUTTON_LEFT)) {
+				inputHandler.keyStateChanged(SDL_BUTTON_LEFT, false);
+				exec->isRunning = true;
+			}
+			if (buttonState & SDL_BUTTON(SDL_BUTTON_MIDDLE))
+				inputHandler.keyStateChanged(SDL_BUTTON_MIDDLE, false);
+			if (buttonState & SDL_BUTTON(SDL_BUTTON_RIGHT))
+				inputHandler.keyStateChanged(SDL_BUTTON_RIGHT, false);
+
+			break;
+		}
+		case SDL_MOUSEBUTTONUP: {
+			u32 buttonState = SDL_GetMouseState(NULL, NULL);
+
+			if (!(buttonState & SDL_BUTTON(SDL_BUTTON_LEFT)))
+				inputHandler.keyStateChanged(SDL_BUTTON_LEFT, true);
+			if (!(buttonState & SDL_BUTTON(SDL_BUTTON_MIDDLE)))
+				inputHandler.keyStateChanged(SDL_BUTTON_MIDDLE, true);
+			if (!(buttonState & SDL_BUTTON(SDL_BUTTON_RIGHT)))
+				inputHandler.keyStateChanged(SDL_BUTTON_RIGHT, true);
+
 			break;
 		}
 		default: {

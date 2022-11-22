@@ -1,6 +1,8 @@
 #include "Game.h"
 
 int main(int argc, char* argv[]) {
+	srand(time(NULL));
+
 	const int targetFPS = 60;
 	const int frameDelay = 1000 / targetFPS;
 

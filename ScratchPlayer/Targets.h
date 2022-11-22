@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>;
+#include <string>
 
 #include "SDL.h";
 #include "SDL_image.h";
@@ -306,9 +307,14 @@ public:
 	int x;
 	int y;
 
-	void doParenting(Sprite* sprite, json data);
 
 	OpCode getOpCode(char* opcode);
+	void doParenting(Sprite* sprite, json data);
+
+	Input* getInputByName(const char* name);
+	Field* getFieldByName(const char* name);
+
+	std::string getBlockValueAsString(Sprite* parentSprite);
 };
 
 class BlockSet {
@@ -319,10 +325,17 @@ public:
 	Block* firstBlock;
 	Block* currentBlock;
 
-	int framesToWait;
-	int scheduledFrameAction;
+	bool doneFlag;
 
-	void execute();
+	int framesToWait;
+
+	int scheduledFrameAction;
+	float scheduledXTrans;
+	float scheduledXEnd;
+	float scheduledYTrans;
+	float scheduledYEnd;
+
+	void execute(Sprite* parentSprite);
 };
 
 class Input {

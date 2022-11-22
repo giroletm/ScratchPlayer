@@ -33,21 +33,17 @@ Executor::~Executor() {
 }
 
 void Executor::executeBlocks() {
+    if (!isRunning) return;
+
     int spriteCount = targets->data.size();
     for (int spriteID = 0; spriteID < spriteCount; spriteID++) {
         Sprite* currentSprite = targets->sprites[spriteID];
 
         int blockSetCount = currentSprite->blockSets.size();
         for (int bSID = 0; bSID < blockSetCount; bSID++) {
-            BlockSet* currentBS = currentSprite->blockSets[spriteID];
+            BlockSet* currentBS = currentSprite->blockSets[bSID];
 
-            if (currentBS->currentBlock == 0) {
-
-
-                continue;
-            }
-
-
+            currentBS->execute(currentSprite);
         }
     }
 }
@@ -87,16 +83,29 @@ void Executor::render() {
                     h *= currentSprite->size / 100.0f;
 
                     int x = (int)round(currentSprite->x + ((float)ww/2.0f) - (w/2.0f));
-                    int y = (int)round(currentSprite->y + ((float)wh/2.0f) - (h/2.0f));
+                    int y = (int)round(-currentSprite->y + ((float)wh/2.0f) - (h/2.0f));
 
                     SDL_Rect dRect = { x, y, (int)round(w), (int)round(h) };
                     SDL_Point centerRot = { currentCostume->rotationCenterX, currentCostume->rotationCenterY };
 
                     float angle = (currentSprite->direction - 90.0f);
 
+                    //printf("Rendering sprite %d at %f;%f\n", i, currentSprite->x, currentSprite->y);
                     //printf("Rendering Sprite %d at %d;%d, sized %f;%f, angled %f, centered at %d;%d\n", i, x, y, w, h, angle, centerRot.x, centerRot.y);
 
-                    SDL_RenderCopyEx(Game::instance->renderer, rTexture, NULL, &dRect, angle, &centerRot, SDL_FLIP_NONE);
+                    SDL_RendererFlip flip = SDL_FLIP_NONE;
+                    if (strcmp(currentSprite->rotationStyle, "don't rotate") == 0) {
+                        angle = 0.0f;
+                    }
+                    else if (strcmp(currentSprite->rotationStyle, "left-right") == 0) {
+                        float angleMod = angle;
+                        while (angleMod < 0.0f) angleMod += 360.0f;
+                        while (angleMod > 360.0f) angleMod -= 360.0f;
+
+                        if (angleMod > 90.0f) flip = SDL_FLIP_HORIZONTAL;
+                    }
+
+                    SDL_RenderCopyEx(Game::instance->renderer, rTexture, NULL, &dRect, angle, &centerRot, flip);
                 }
             }
         }

@@ -478,6 +478,8 @@ BlockSet::BlockSet(Block* block) {
 	this->firstBlock = block;
 	this->currentBlock = 0;
 	this->framesToWait = 0;
+	this->scheduledFrameAction = -1;
+	this->doneFlag = false;
 }
 
 Input::Input(std::string id, json data) {
@@ -820,6 +822,22 @@ Sound* Sprite::getSoundByName(const char* name) {
 }
 
 
+Input* Block::getInputByName(const char* name) {
+	int inputCount = this->inputs.size();
+	for (int i = 0; i < inputCount; i++) 
+		if (strcmp(this->inputs[i]->name, name) == 0) return this->inputs[i];
+
+	return 0;
+}
+
+Field* Block::getFieldByName(const char* name) {
+	int fieldCount = this->fields.size();
+	for (int i = 0; i < fieldCount; i++)
+		if (strcmp(this->fields[i]->name, name) == 0) return this->fields[i];
+
+	return 0;
+}
+
 void Block::doParenting(Sprite* sprite, json data) {
 	char* pName = getCharsForJSON(data["parent"]);
 	char* nName = getCharsForJSON(data["next"]);
@@ -837,12 +855,381 @@ void Block::doParenting(Sprite* sprite, json data) {
 	else this->next = 0;
 }
 
-void BlockSet::execute() {
-	if (currentBlock == 0) {
-		bool triggered = false;
+#include <sstream>
 
-		
+template <typename T>
+std::string tostr(const T& t) {
+	std::ostringstream os;
+	os << t;
+	return os.str();
+}
 
-		if (triggered) currentBlock = firstBlock->next;
+std::string Block::getBlockValueAsString(Sprite* parentSprite) {
+	std::string base = "";
+	switch (this->opcode) {
+		case OpCode::motion_xposition:
+		{
+			return tostr(round(parentSprite->x));
+		}
+		case OpCode::motion_yposition:
+		{
+			return tostr(parentSprite->y);
+		}
+		case OpCode::motion_direction:
+		{
+			return tostr(parentSprite->direction);
+		}
+	}
+
+	return base;
+}
+
+std::string getGenericInputValue(Sprite* parentSprite, json content) {
+	if (content[0] == 3) {
+		char* bID = getCharsForJSON(content[1]);
+		std::string dist = parentSprite->getBlockByUniqueID(bID)->getBlockValueAsString(parentSprite);
+		delete[] bID;
+
+		return dist;
+	}
+	else {
+		std::string dist = content[1][1];
+		return dist;
+	}
+}
+
+
+std::string getGenericInputValueByName(Sprite* parentSprite, Block* currentBlock, const char* paramName) {
+	return getGenericInputValue(parentSprite, currentBlock->getInputByName(paramName)->content);
+}
+
+#include <math.h>
+
+void BlockSet::execute(Sprite* parentSprite) {
+	if (framesToWait) {
+		framesToWait--;
+		return;
+	}
+
+	if (scheduledFrameAction > -1) {
+		if (scheduledFrameAction) {
+			parentSprite->x += scheduledXTrans;
+			parentSprite->y += scheduledYTrans;
+		}
+		else {
+			parentSprite->x = scheduledXEnd;
+			parentSprite->y = scheduledYEnd;
+		}
+
+		scheduledFrameAction--;
+		return;
+	}
+
+	while (true) {
+		if (currentBlock == 0) {
+			bool triggered = false;
+
+			switch (firstBlock->opcode) {
+				case Block::OpCode::event_whenflagclicked:
+				{
+					if (!this->doneFlag) {
+						this->doneFlag = true;
+						triggered = true;
+					}
+					break;
+				}
+				case Block::OpCode::event_whenkeypressed:
+				{
+					break;
+				}
+				case Block::OpCode::event_whenthisspriteclicked:
+				{
+					break;
+				}
+				case Block::OpCode::event_whenbackdropswitchesto:
+				{
+					break;
+				}
+				case Block::OpCode::event_whengreaterthan:
+				{
+					break;
+				}
+				case Block::OpCode::event_whenbroadcastreceived:
+				{
+					break;
+				}
+				case Block::OpCode::control_start_as_clone:
+				{
+					break;
+				}
+			}
+
+			//if (triggered) printf("Triggered!\n");
+			//else printf("WaitForTrigger: %d (%d)\n", this->doneFlag, this->firstBlock->opcode);
+
+			if (triggered) currentBlock = firstBlock->next;
+			else return;
+		}
+
+		bool halt = false;
+		if (currentBlock) {
+			printf("Block %p, opcode %d -> ", currentBlock, currentBlock->opcode);
+			switch (currentBlock->opcode) {
+				case Block::OpCode::motion_movesteps:
+				{
+					float distance = std::stof(getGenericInputValueByName(parentSprite, currentBlock, "STEPS"));
+
+					parentSprite->x += distance * cos((parentSprite->direction - 90.0f) * M_PI / 180.0f);
+					parentSprite->y -= distance * sin((parentSprite->direction - 90.0f) * M_PI / 180.0f);
+
+					printf("Executing \"move %f steps\"\n", distance);
+
+					break;
+				}
+				case Block::OpCode::motion_turnright:
+				case Block::OpCode::motion_turnleft:
+				{
+					float degrees = std::stof(getGenericInputValueByName(parentSprite, currentBlock, "DEGREES"));
+
+					bool isLeft = (currentBlock->opcode == Block::OpCode::motion_turnleft);
+					if (isLeft) degrees *= -1.0f;
+
+					parentSprite->direction += degrees;
+
+					printf("Executing \"turn %s %f degrees\"\n", isLeft ? "left" : "right", degrees);
+
+					break;
+				}
+				case Block::OpCode::motion_goto:
+				{
+					char* dest = getCharsForJSON(currentBlock->getInputByName("TO")->content[1]);
+					Block* destBlock = parentSprite->getBlockByUniqueID(dest);
+					delete[] dest;
+
+					char* toGo = getCharsForJSON(destBlock->getFieldByName("TO")->content[0]);
+
+					float x = parentSprite->x;
+					float y = parentSprite->y;
+					if (strcmp(toGo, "_random_") == 0) {
+						int ww, wh;
+						SDL_GetWindowSize(Game::instance->window, &ww, &wh);
+
+						x = (rand() % ww) - (ww / 2);;
+						y = (rand() % wh) - (wh / 2);;
+					}
+					else if (strcmp(toGo, "_mouse_") == 0) {
+
+					}
+					else {
+						Sprite* destSprite = Executor::instance->targets->getSpriteByName(toGo);
+						if (destSprite) {
+							x = destSprite->x;
+							y = destSprite->y;
+						}
+					}
+
+					parentSprite->x = x;
+					parentSprite->y = y;
+
+					printf("Executing \"go to %s\"\n", toGo);
+
+					delete[] toGo;
+
+					break;
+				}
+				// motion_goto_menu is used by the motion_goto block, so it can't be attatched directly to any block
+				case Block::OpCode::motion_gotoxy:
+				{
+					float paramX = std::stof(getGenericInputValueByName(parentSprite, currentBlock, "X"));
+					float paramY = std::stof(getGenericInputValueByName(parentSprite, currentBlock, "Y"));
+
+					printf("Executing \"go to x: %f  y: %f\"\n", paramX, paramY);
+
+					parentSprite->x = paramX;
+					parentSprite->y = paramY;
+
+					break;
+				}
+				case Block::OpCode::motion_glideto:
+				{
+					char* dest = getCharsForJSON(currentBlock->getInputByName("TO")->content[1]);
+					Block* destBlock = parentSprite->getBlockByUniqueID(dest);
+					delete[] dest;
+
+					char* toGo = getCharsForJSON(destBlock->getFieldByName("TO")->content[0]);
+
+					float paramSecs = std::stof(getGenericInputValueByName(parentSprite, currentBlock, "SECS"));
+
+					float x = parentSprite->x;
+					float y = parentSprite->y;
+					if (strcmp(toGo, "_random_") == 0) {
+						int ww, wh;
+						SDL_GetWindowSize(Game::instance->window, &ww, &wh);
+
+						x = (rand() % ww) - (ww / 2);;
+						y = (rand() % wh) - (wh / 2);;
+					}
+					else if (strcmp(toGo, "_mouse_") == 0) {
+
+					}
+					else {
+						Sprite* destSprite = Executor::instance->targets->getSpriteByName(toGo);
+						if (destSprite) {
+							x = destSprite->x;
+							y = destSprite->y;
+						}
+					}
+
+					scheduledFrameAction = (int)round(paramSecs * 60.0f);
+					scheduledXEnd = x;
+					scheduledXTrans = (x - parentSprite->x) / (float)scheduledFrameAction;
+					scheduledYEnd = y;
+					scheduledYTrans = (y - parentSprite->y) / (float)scheduledFrameAction;
+
+					printf("Executing \"glide %f secs to %s\"\n", paramSecs, toGo);
+
+					delete[] toGo;
+
+					break;
+				}
+				// motion_glideto_menu is used by the motion_glideto block, so it can't be attatched directly to any block
+				case Block::OpCode::motion_glidesecstoxy:
+				{
+					float paramSecs = std::stof(getGenericInputValueByName(parentSprite, currentBlock, "SECS"));
+					float paramX = std::stof(getGenericInputValueByName(parentSprite, currentBlock, "X"));
+					float paramY = std::stof(getGenericInputValueByName(parentSprite, currentBlock, "Y"));
+
+					scheduledFrameAction = (int)round(paramSecs * 60.0f);
+					scheduledXEnd = paramX;
+					scheduledXTrans = (paramX - parentSprite->x) / (float)scheduledFrameAction;
+					scheduledYEnd = paramY;
+					scheduledYTrans = (paramY - parentSprite->y) / (float)scheduledFrameAction;
+
+					printf("Executing \"glide %f secs to x: %f  y: %f\"\n", paramSecs, paramX, paramY);
+
+					break;
+				}
+				case Block::OpCode::motion_pointindirection:
+				{
+					float paramDir = std::stof(getGenericInputValueByName(parentSprite, currentBlock, "DIRECTION"));
+
+					parentSprite->direction = paramDir;
+
+					printf("Executing \"point in direction %f\"\n", paramDir);
+
+					break;
+				}
+				case Block::OpCode::motion_pointtowards:
+				{
+					char* dest = getCharsForJSON(currentBlock->getInputByName("TOWARDS")->content[1]);
+					Block* destBlock = parentSprite->getBlockByUniqueID(dest);
+					delete[] dest;
+
+					char* toGo = getCharsForJSON(destBlock->getFieldByName("TOWARDS")->content[0]);
+
+					float x = parentSprite->x;
+					float y = parentSprite->y;
+					if (strcmp(toGo, "_mouse_") == 0) {
+
+					}
+					else {
+						Sprite* destSprite = Executor::instance->targets->getSpriteByName(toGo);
+						if (destSprite) {
+							x = destSprite->x;
+							y = destSprite->y;
+						}
+					}
+
+					float delta_x = parentSprite->x - x;
+					float delta_y = parentSprite->y - y;
+					float theta_radians = atan2(delta_y, delta_x);
+
+					parentSprite->direction = theta_radians * (360.0f / (2.0f * M_PI));
+
+					printf("Executing \"point towards %s\"\n", toGo);
+
+					delete[] toGo;
+
+					break;
+				}
+				// motion_pointtowards_menu is used by the motion_pointtowards block, so it can't be attatched directly to any block
+				case Block::OpCode::motion_changexby:
+				{
+					float paramX = std::stof(getGenericInputValueByName(parentSprite, currentBlock, "DX"));
+
+					parentSprite->x += paramX;
+
+					printf("Executing \"change x by %f\"\n", paramX);
+
+					break;
+				}
+				case Block::OpCode::motion_setx:
+				{
+					float paramX = std::stof(getGenericInputValueByName(parentSprite, currentBlock, "X"));
+
+					parentSprite->x = paramX;
+
+					printf("Executing \"set x to %f\"\n", paramX);
+
+					break;
+				}
+				case Block::OpCode::motion_changeyby:
+				{
+					float paramY = std::stof(getGenericInputValueByName(parentSprite, currentBlock, "DY"));
+
+					parentSprite->y += paramY;
+
+					printf("Executing \"change y by %f\"\n", paramY);
+
+					break;
+				}
+				case Block::OpCode::motion_sety:
+				{
+					float paramY = std::stof(getGenericInputValueByName(parentSprite, currentBlock, "Y"));
+
+					parentSprite->y = paramY;
+
+					printf("Executing \"set y to %f\"\n", paramY);
+
+					break;
+				}
+				case Block::OpCode::motion_ifonedgebounce:
+				{
+					printf("Executing \"if on edge, bounce\"\n");
+
+					break;
+				}
+				case Block::OpCode::motion_setrotationstyle:
+				{
+					char* destRot = getCharsForJSON(currentBlock->getInputByName("STYLE")->content[0]);
+
+					delete[] parentSprite->rotationStyle;
+
+					parentSprite->rotationStyle = destRot;
+
+					printf("Executing \"set rotation style to %s\"\n", destRot);
+
+					break;
+				}
+				// motion_xposition, motion_yposition and motion_direction are return-only
+				case Block::OpCode::looks_sayforsecs:
+				{
+					std::string toSay = getGenericInputValueByName(parentSprite, currentBlock, "MESSAGE");
+					float paramSecs = std::stof(getGenericInputValueByName(parentSprite, currentBlock, "SECS"));
+
+					char* ts = getCharsForString(toSay);
+					printf("Executing \"say %s for %f seconds\"\n", ts, paramSecs);
+					delete[] ts;
+				}
+			}
+
+			if (currentBlock->next) currentBlock = currentBlock->next;
+			else {
+				currentBlock = 0;
+				break;
+			}
+
+			if (halt) break;
+		}
 	}
 }

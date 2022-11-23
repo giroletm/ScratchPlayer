@@ -16,7 +16,7 @@ char* getCharsForString(std::string str) {
 	return chr;
 }
 
-char* getCharsForJSON(json data) {
+inline char* getCharsForJSON(json data) {
 	if (data.is_null()) return 0;
 
 	return getCharsForString(data);
@@ -407,7 +407,7 @@ static const int blocksCount[]{
 	(sizeof(argumentCodes) / sizeof(const char*))
 };
 
-Block::OpCode Block::getOpCode(char* opcode) {
+Block::OpCode Block::getOpCode(const char* opcode) {
 	int catsCount = sizeof(codesCats) / sizeof(const char**);
 
 	int num = 0;
@@ -435,9 +435,8 @@ Block::OpCode Block::getOpCode(char* opcode) {
 Block::Block(std::string id, json data) {
 	this->uniqueID = getCharsForString(id);
 
-	char* rawOpCode = getCharsForJSON(data["opcode"]);
-	this->opcode = getOpCode(rawOpCode);;
-	delete[] rawOpCode;
+	std::string rawOpCode = data["opcode"];
+	this->opcode = getOpCode(rawOpCode.c_str());
 	
 	this->shadow = data["shadow"];
 	this->topLevel = data["topLevel"];
@@ -488,9 +487,7 @@ Input::Input(std::string id, json data) {
 
 
 	#ifdef _DEBUG
-	char* val = getCharsForString(data.dump());
-	printf("\t\t\t- Input \"%s\" = %s.\n", this->name, val);
-	delete[] val;
+	printf("\t\t\t- Input \"%s\" = %s.\n", this->name, data.dump().c_str());
 	#endif
 }
 
@@ -500,9 +497,7 @@ Field::Field(std::string id, json data) {
 
 
 	#ifdef _DEBUG
-	char* val = getCharsForString(data.dump());
-	printf("\t\t\t- Field \"%s\" = %s.\n", this->name, val);
-	delete[] val;
+	printf("\t\t\t- Field \"%s\" = %s.\n", this->name, data.dump().c_str());
 	#endif
 }
 
@@ -786,6 +781,7 @@ Broadcast* Sprite::getBroadcastByUniqueID(const char* uniqueID) {
 }
 
 Block* Sprite::getBlockByUniqueID(const char* uniqueID) {
+
 	int blockCount = this->blocks.size();
 	for (int i = 0; i < blockCount; i++) {
 		if (strcmp(this->blocks[i]->uniqueID, uniqueID) == 0) return this->blocks[i];
@@ -857,6 +853,23 @@ void Block::doParenting(Sprite* sprite, json data) {
 
 #include <sstream>
 
+bool isFloat(const char* str) {
+	bool hasDot = false;
+	int len = strlen(str);
+
+	for (int i = ((str[0] == '-') ? 1 : 0); i < len; i++) {
+		if (str[i] < '0' || str[i] > '9') {
+			if (!hasDot) {
+				if (str[i] == '.') hasDot = true;
+				else return false;
+			}
+			else return false;
+		}
+	}
+
+	return str[len - 1] != '.';
+}
+
 template <typename T>
 std::string tostr(const T& t) {
 	std::ostringstream os;
@@ -864,31 +877,20 @@ std::string tostr(const T& t) {
 	return os.str();
 }
 
-std::string Block::getBlockValueAsString(Sprite* parentSprite) {
-	std::string base = "";
-	switch (this->opcode) {
-		case OpCode::motion_xposition:
-		{
-			return tostr(round(parentSprite->x));
-		}
-		case OpCode::motion_yposition:
-		{
-			return tostr(parentSprite->y);
-		}
-		case OpCode::motion_direction:
-		{
-			return tostr(parentSprite->direction);
-		}
-	}
+float str2float(const char* str) {
+	if (!isFloat(str) || (str[0] == 0)) return 0.0f;
+	return std::stof(str);
+}
 
-	return base;
+float str2float(std::string str) {
+	if (!isFloat(str.data()) || (str[0] == 0)) return 0.0f;
+	return std::stof(str);
 }
 
 std::string getGenericInputValue(Sprite* parentSprite, json content) {
 	if (content[0] == 3) {
-		char* bID = getCharsForJSON(content[1]);
+		char* bID = getCharsForString(content[1]);
 		std::string dist = parentSprite->getBlockByUniqueID(bID)->getBlockValueAsString(parentSprite);
-		delete[] bID;
 
 		return dist;
 	}
@@ -901,6 +903,65 @@ std::string getGenericInputValue(Sprite* parentSprite, json content) {
 
 std::string getGenericInputValueByName(Sprite* parentSprite, Block* currentBlock, const char* paramName) {
 	return getGenericInputValue(parentSprite, currentBlock->getInputByName(paramName)->content);
+}
+
+std::string Block::getBlockValueAsString(Sprite* parentSprite) {
+	std::string base = "";
+	switch (this->opcode) {
+		case OpCode::motion_xposition:
+		{
+			return tostr(parentSprite->x);
+		}
+		case OpCode::motion_yposition:
+		{
+			return tostr(parentSprite->y);
+		}
+		case OpCode::motion_direction:
+		{
+			return tostr(parentSprite->direction);
+		}
+		case OpCode::operator_add:
+		case OpCode::operator_subtract:
+		case OpCode::operator_multiply:
+		case OpCode::operator_divide:
+		{
+			std::string operand1 = getGenericInputValue(parentSprite, this->getInputByName("NUM1")->content);
+			std::string operand2 = getGenericInputValue(parentSprite, this->getInputByName("NUM2")->content);
+
+			float op1 = str2float(operand1);
+			float op2 = str2float(operand2);
+
+			if(this->opcode == OpCode::operator_add)
+				return tostr(op1 + op2);
+
+			else if(this->opcode == OpCode::operator_subtract)
+				return tostr(op1 - op2);
+
+			else if(this->opcode == OpCode::operator_multiply)
+				return tostr(op1 * op2);
+
+			else //if(this->opcode == OpCode::operator_divide)
+				return tostr(op1 / op2);
+		}
+		case OpCode::operator_random:
+		{
+			std::string operand1 = getCharsForString(getGenericInputValue(parentSprite, this->getInputByName("FROM")->content));
+			std::string operand2 = getCharsForString(getGenericInputValue(parentSprite, this->getInputByName("TO")->content));
+
+			float op1 = str2float(operand1);
+			float op2 = str2float(operand2);
+
+			bool isFloat = ((float)((int)(op1)) == op1) || ((float)((int)(op2)) == op2);
+
+			float lim = (op2 - op1);
+			if (isFloat)
+				return tostr(((float)rand() / (float)(RAND_MAX / lim)) + op1);
+			else
+				return tostr((rand() % ((int)lim)) + (int)op1);
+		}
+	}
+
+	return base;
 }
 
 #include <math.h>
@@ -941,10 +1002,12 @@ void BlockSet::execute(Sprite* parentSprite) {
 				case Block::OpCode::event_whenkeypressed:
 				{
 					char* key = getCharsForJSON(firstBlock->getFieldByName("KEY_OPTION")->content[0]);
-					KeyHandle* kh = Game::instance->inputHandler.getKeyHandleByName(key);
-					delete[] key;
+					if (key) {
+						KeyHandle* kh = Game::instance->inputHandler.getKeyHandleByName(key);
+						delete[] key;
 
-					if (kh->pressed) triggered = true;
+						if (kh->pressed) triggered = true;
+					}
 
 					break;
 				}
@@ -983,7 +1046,7 @@ void BlockSet::execute(Sprite* parentSprite) {
 			switch (currentBlock->opcode) {
 				case Block::OpCode::motion_movesteps:
 				{
-					float distance = std::stof(getGenericInputValueByName(parentSprite, currentBlock, "STEPS"));
+					float distance = str2float(getGenericInputValueByName(parentSprite, currentBlock, "STEPS"));
 
 					parentSprite->x += distance * cos((parentSprite->direction - 90.0f) * M_PI / 180.0f);
 					parentSprite->y -= distance * sin((parentSprite->direction - 90.0f) * M_PI / 180.0f);
@@ -995,7 +1058,7 @@ void BlockSet::execute(Sprite* parentSprite) {
 				case Block::OpCode::motion_turnright:
 				case Block::OpCode::motion_turnleft:
 				{
-					float degrees = std::stof(getGenericInputValueByName(parentSprite, currentBlock, "DEGREES"));
+					float degrees = str2float(getGenericInputValueByName(parentSprite, currentBlock, "DEGREES"));
 
 					bool isLeft = (currentBlock->opcode == Block::OpCode::motion_turnleft);
 					if (isLeft) degrees *= -1.0f;
@@ -1009,10 +1072,11 @@ void BlockSet::execute(Sprite* parentSprite) {
 				case Block::OpCode::motion_goto:
 				{
 					char* dest = getCharsForJSON(currentBlock->getInputByName("TO")->content[1]);
+					if (!dest) break;
 					Block* destBlock = parentSprite->getBlockByUniqueID(dest);
-					delete[] dest;
 
 					char* toGo = getCharsForJSON(destBlock->getFieldByName("TO")->content[0]);
+					if (!toGo) break;
 
 					float x = parentSprite->x;
 					float y = parentSprite->y;
@@ -1039,15 +1103,13 @@ void BlockSet::execute(Sprite* parentSprite) {
 
 					printf("Executing \"go to %s\"\n", toGo);
 
-					delete[] toGo;
-
 					break;
 				}
 				// motion_goto_menu is used by the motion_goto block, so it can't be attatched directly to any block
 				case Block::OpCode::motion_gotoxy:
 				{
-					float paramX = std::stof(getGenericInputValueByName(parentSprite, currentBlock, "X"));
-					float paramY = std::stof(getGenericInputValueByName(parentSprite, currentBlock, "Y"));
+					float paramX = str2float(getGenericInputValueByName(parentSprite, currentBlock, "X"));
+					float paramY = str2float(getGenericInputValueByName(parentSprite, currentBlock, "Y"));
 
 					printf("Executing \"go to x: %f  y: %f\"\n", paramX, paramY);
 
@@ -1059,12 +1121,14 @@ void BlockSet::execute(Sprite* parentSprite) {
 				case Block::OpCode::motion_glideto:
 				{
 					char* dest = getCharsForJSON(currentBlock->getInputByName("TO")->content[1]);
+					if (!dest) break;
 					Block* destBlock = parentSprite->getBlockByUniqueID(dest);
 					delete[] dest;
 
 					char* toGo = getCharsForJSON(destBlock->getFieldByName("TO")->content[0]);
+					if (!toGo) break;
 
-					float paramSecs = std::stof(getGenericInputValueByName(parentSprite, currentBlock, "SECS"));
+					float paramSecs = str2float(getGenericInputValueByName(parentSprite, currentBlock, "SECS"));
 
 					float x = parentSprite->x;
 					float y = parentSprite->y;
@@ -1096,14 +1160,16 @@ void BlockSet::execute(Sprite* parentSprite) {
 
 					delete[] toGo;
 
+					halt = true;
+
 					break;
 				}
 				// motion_glideto_menu is used by the motion_glideto block, so it can't be attatched directly to any block
 				case Block::OpCode::motion_glidesecstoxy:
 				{
-					float paramSecs = std::stof(getGenericInputValueByName(parentSprite, currentBlock, "SECS"));
-					float paramX = std::stof(getGenericInputValueByName(parentSprite, currentBlock, "X"));
-					float paramY = std::stof(getGenericInputValueByName(parentSprite, currentBlock, "Y"));
+					float paramSecs = str2float(getGenericInputValueByName(parentSprite, currentBlock, "SECS"));
+					float paramX = str2float(getGenericInputValueByName(parentSprite, currentBlock, "X"));
+					float paramY = str2float(getGenericInputValueByName(parentSprite, currentBlock, "Y"));
 
 					scheduledFrameAction = (int)round(paramSecs * 60.0f);
 					scheduledXEnd = paramX;
@@ -1113,11 +1179,13 @@ void BlockSet::execute(Sprite* parentSprite) {
 
 					printf("Executing \"glide %f secs to x: %f  y: %f\"\n", paramSecs, paramX, paramY);
 
+					halt = true;
+
 					break;
 				}
 				case Block::OpCode::motion_pointindirection:
 				{
-					float paramDir = std::stof(getGenericInputValueByName(parentSprite, currentBlock, "DIRECTION"));
+					float paramDir = str2float(getGenericInputValueByName(parentSprite, currentBlock, "DIRECTION"));
 
 					parentSprite->direction = paramDir;
 
@@ -1128,10 +1196,12 @@ void BlockSet::execute(Sprite* parentSprite) {
 				case Block::OpCode::motion_pointtowards:
 				{
 					char* dest = getCharsForJSON(currentBlock->getInputByName("TOWARDS")->content[1]);
+					if (!dest) break;
 					Block* destBlock = parentSprite->getBlockByUniqueID(dest);
 					delete[] dest;
 
 					char* toGo = getCharsForJSON(destBlock->getFieldByName("TOWARDS")->content[0]);
+					if (!toGo) break;
 
 					float x = parentSprite->x;
 					float y = parentSprite->y;
@@ -1156,12 +1226,12 @@ void BlockSet::execute(Sprite* parentSprite) {
 
 					delete[] toGo;
 
-					break;
+					break; 
 				}
 				// motion_pointtowards_menu is used by the motion_pointtowards block, so it can't be attatched directly to any block
 				case Block::OpCode::motion_changexby:
 				{
-					float paramX = std::stof(getGenericInputValueByName(parentSprite, currentBlock, "DX"));
+					float paramX = str2float(getGenericInputValueByName(parentSprite, currentBlock, "DX"));
 
 					parentSprite->x += paramX;
 
@@ -1171,7 +1241,7 @@ void BlockSet::execute(Sprite* parentSprite) {
 				}
 				case Block::OpCode::motion_setx:
 				{
-					float paramX = std::stof(getGenericInputValueByName(parentSprite, currentBlock, "X"));
+					float paramX = str2float(getGenericInputValueByName(parentSprite, currentBlock, "X"));
 
 					parentSprite->x = paramX;
 
@@ -1181,7 +1251,7 @@ void BlockSet::execute(Sprite* parentSprite) {
 				}
 				case Block::OpCode::motion_changeyby:
 				{
-					float paramY = std::stof(getGenericInputValueByName(parentSprite, currentBlock, "DY"));
+					float paramY = str2float(getGenericInputValueByName(parentSprite, currentBlock, "DY"));
 
 					parentSprite->y += paramY;
 
@@ -1191,7 +1261,7 @@ void BlockSet::execute(Sprite* parentSprite) {
 				}
 				case Block::OpCode::motion_sety:
 				{
-					float paramY = std::stof(getGenericInputValueByName(parentSprite, currentBlock, "Y"));
+					float paramY = str2float(getGenericInputValueByName(parentSprite, currentBlock, "Y"));
 
 					parentSprite->y = paramY;
 
@@ -1208,6 +1278,7 @@ void BlockSet::execute(Sprite* parentSprite) {
 				case Block::OpCode::motion_setrotationstyle:
 				{
 					char* destRot = getCharsForJSON(currentBlock->getInputByName("STYLE")->content[0]);
+					if (!destRot) break;
 
 					delete[] parentSprite->rotationStyle;
 
@@ -1215,17 +1286,17 @@ void BlockSet::execute(Sprite* parentSprite) {
 
 					printf("Executing \"set rotation style to %s\"\n", destRot);
 
+					delete[] destRot;
+
 					break;
 				}
 				// motion_xposition, motion_yposition and motion_direction are return-only
 				case Block::OpCode::looks_sayforsecs:
 				{
 					std::string toSay = getGenericInputValueByName(parentSprite, currentBlock, "MESSAGE");
-					float paramSecs = std::stof(getGenericInputValueByName(parentSprite, currentBlock, "SECS"));
+					float paramSecs = str2float(getGenericInputValueByName(parentSprite, currentBlock, "SECS"));
 
-					char* ts = getCharsForString(toSay);
-					printf("Executing \"say %s for %f seconds\"\n", ts, paramSecs);
-					delete[] ts;
+					printf("Executing \"say %s for %f seconds\"\n", toSay.c_str(), paramSecs);
 				}
 			}
 

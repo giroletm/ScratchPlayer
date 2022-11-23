@@ -308,7 +308,7 @@ public:
 	int y;
 
 
-	OpCode getOpCode(char* opcode);
+	OpCode getOpCode(const char* opcode);
 	void doParenting(Sprite* sprite, json data);
 
 	Input* getInputByName(const char* name);

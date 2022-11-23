@@ -29,7 +29,7 @@ int Game::init(const char* title, int xpos, int ypos, int width, int height, u32
 
 		isRunning = true;
 
-		exec = new Executor("Test11.sb3");
+		exec = new Executor("Test12.sb3");
 
 		return 0;
 	}
@@ -53,7 +53,6 @@ void Game::handleEvents() {
 		}
 		case SDL_KEYDOWN: {
 			inputHandler.keyStateChanged(event.key.keysym.sym, false);
-			printf("Pressed: %d\n", event.key.keysym.sym);
 			break;
 		}
 		case SDL_KEYUP: {

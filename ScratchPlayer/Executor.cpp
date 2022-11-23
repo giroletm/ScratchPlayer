@@ -61,7 +61,7 @@ void Executor::render() {
     for (int layer = minLayer; layer <= maxLayer; layer++) {
         for (int i = 0; i < spriteCount; i++) {
             Sprite* currentSprite = targets->sprites[i];
-            if (currentSprite->layerOrder == layer) {
+            if (currentSprite->layerOrder == layer && currentSprite->visible) {
                 Costume* currentCostume = currentSprite->costumes[currentSprite->currentCostume];
                 SDL_Texture* rTexture = currentCostume->costumeTexture;
 
@@ -79,14 +79,15 @@ void Executor::render() {
                     SDL_QueryTexture(rTexture, NULL, NULL, &wi, &hi);
                     float w = wi, h = hi;
 
-                    w *= currentSprite->size / 100.0f;
-                    h *= currentSprite->size / 100.0f;
+                    float sizeRatio = currentSprite->size / 100.0f;
+                    w *= sizeRatio;
+                    h *= sizeRatio;
 
                     int x = (int)round(currentSprite->x + ((float)ww/2.0f) - (w/2.0f));
                     int y = (int)round(-currentSprite->y + ((float)wh/2.0f) - (h/2.0f));
 
                     SDL_Rect dRect = { x, y, (int)round(w), (int)round(h) };
-                    SDL_Point centerRot = { currentCostume->rotationCenterX, currentCostume->rotationCenterY };
+                    SDL_Point centerRot = { currentCostume->rotationCenterX * sizeRatio, currentCostume->rotationCenterY * sizeRatio };
 
                     float angle = (currentSprite->direction - 90.0f);
 

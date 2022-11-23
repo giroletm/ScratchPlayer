@@ -95,6 +95,7 @@ public:
 	Comment* getCommentByUniqueID(const char* uniqueID);
 
 	Costume* getCostumeByName(const char* name);
+	int getCostumeIDByName(const char* name);
 	Sound* getSoundByName(const char* name);
 };
 

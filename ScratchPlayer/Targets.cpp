@@ -396,7 +396,7 @@ static Block::OpCode codesBegins[]{
 
 static const int blocksCount[]{
 	(sizeof(motionCodes) / sizeof(const char*)),
-	(sizeof(soundCodes) / sizeof(const char*)),
+	(sizeof(looksCodes) / sizeof(const char*)),
 	(sizeof(soundCodes) / sizeof(const char*)),
 	(sizeof(eventCodes) / sizeof(const char*)),
 	(sizeof(controlCodes) / sizeof(const char*)),
@@ -426,8 +426,9 @@ Block::OpCode Block::getOpCode(const char* opcode) {
 
 			break;
 		}
-
 	}
+
+	printf("Parsed opcode %s into %d\n", opcode, num);
 
 	return (Block::OpCode)num;
 }
@@ -808,6 +809,15 @@ Costume* Sprite::getCostumeByName(const char* name) {
 	return 0;
 }
 
+int Sprite::getCostumeIDByName(const char* name) {
+	int costumesCount = this->costumes.size();
+	for (int i = 0; i < costumesCount; i++) {
+		if (strcmp(this->costumes[i]->name, name) == 0) return i;
+	}
+
+	return -1;
+}
+
 Sound* Sprite::getSoundByName(const char* name) {
 	int soundsCount = this->sounds.size();
 	for (int i = 0; i < soundsCount; i++) {
@@ -1110,6 +1120,35 @@ std::string Block::getBlockValueAsString(Sprite* parentSprite) {
 
 			return tostr(result);
 		}
+		case OpCode::looks_costumenumbername:
+		{
+			char* nn = getCharsForJSON(this->getFieldByName("NUMBER_NAME")->content[0]);
+			
+			std::string result = "";
+			if (strcmp(nn, "number") == 0) result = tostr(parentSprite->currentCostume + 1);
+			else if (strcmp(nn, "name") == 0) result = parentSprite->costumes[parentSprite->currentCostume]->name;
+
+			delete[] nn;
+
+			return result;
+		}
+		case OpCode::looks_backdropnumbername:
+		{
+			Sprite* bg = Executor::instance->targets->sprites[0];
+			char* nn = getCharsForJSON(this->getFieldByName("NUMBER_NAME")->content[0]);
+
+			std::string result = "";
+			if (strcmp(nn, "number") == 0) result = tostr(bg->currentCostume + 1);
+			else if (strcmp(nn, "name") == 0) result = bg->costumes[bg->currentCostume]->name;
+
+			delete[] nn;
+
+			return result;
+		}
+		case OpCode::looks_size:
+		{
+			return tostr(parentSprite->size);
+		}
 	}
 
 	return base;
@@ -1195,6 +1234,11 @@ void BlockSet::execute(Sprite* parentSprite) {
 		if (currentBlock) {
 			printf("Block %p, opcode %d -> ", currentBlock, currentBlock->opcode);
 			switch (currentBlock->opcode) {
+				case Block::OpCode::unsupported:
+				{
+					printf("unsupported\n");
+					break;
+				}
 				case Block::OpCode::motion_movesteps:
 				{
 					float distance = str2float(getGenericInputValueByName(parentSprite, currentBlock, "STEPS"));
@@ -1256,7 +1300,7 @@ void BlockSet::execute(Sprite* parentSprite) {
 
 					break;
 				}
-				// motion_goto_menu is used by the motion_goto block, so it can't be attatched directly to any block
+				// motion_goto_menu is used by the motion_goto block, so it can't be attached directly to any block
 				case Block::OpCode::motion_gotoxy:
 				{
 					float paramX = str2float(getGenericInputValueByName(parentSprite, currentBlock, "X"));
@@ -1315,7 +1359,7 @@ void BlockSet::execute(Sprite* parentSprite) {
 
 					break;
 				}
-				// motion_glideto_menu is used by the motion_glideto block, so it can't be attatched directly to any block
+				// motion_glideto_menu is used by the motion_glideto block, so it can't be attached directly to any block
 				case Block::OpCode::motion_glidesecstoxy:
 				{
 					float paramSecs = str2float(getGenericInputValueByName(parentSprite, currentBlock, "SECS"));
@@ -1379,7 +1423,7 @@ void BlockSet::execute(Sprite* parentSprite) {
 
 					break; 
 				}
-				// motion_pointtowards_menu is used by the motion_pointtowards block, so it can't be attatched directly to any block
+				// motion_pointtowards_menu is used by the motion_pointtowards block, so it can't be attached directly to any block
 				case Block::OpCode::motion_changexby:
 				{
 					float paramX = str2float(getGenericInputValueByName(parentSprite, currentBlock, "DX"));
@@ -1447,8 +1491,196 @@ void BlockSet::execute(Sprite* parentSprite) {
 					std::string toSay = getGenericInputValueByName(parentSprite, currentBlock, "MESSAGE");
 					float paramSecs = str2float(getGenericInputValueByName(parentSprite, currentBlock, "SECS"));
 
+					framesToWait = (int)round(paramSecs * 60.0f);
+
 					printf("Executing \"say %s for %f seconds\"\n", toSay.c_str(), paramSecs);
+
+					halt = true;
+
+					break;
 				}
+				case Block::OpCode::looks_say:
+				{
+					std::string toSay = getGenericInputValueByName(parentSprite, currentBlock, "MESSAGE");
+
+					printf("Executing \"say %s\"\n", toSay.c_str());
+
+					break;
+				}
+				case Block::OpCode::looks_thinkforsecs:
+				{
+					std::string toThink = getGenericInputValueByName(parentSprite, currentBlock, "MESSAGE");
+					float paramSecs = str2float(getGenericInputValueByName(parentSprite, currentBlock, "SECS"));
+
+					framesToWait = (int)round(paramSecs * 60.0f);
+
+					printf("Executing \"think %s for %f seconds\"\n", toThink.c_str(), paramSecs);
+
+					halt = true;
+
+					break;
+				}
+				case Block::OpCode::looks_think:
+				{
+					std::string toThink = getGenericInputValueByName(parentSprite, currentBlock, "MESSAGE");
+
+					printf("Executing \"think %s\"\n", toThink.c_str());
+
+					break;
+				}
+				case Block::OpCode::looks_switchcostumeto:
+				{
+					char* cost = getCharsForJSON(currentBlock->getInputByName("COSTUME")->content[1]);
+					if (!cost) break;
+					Block* destBlock = parentSprite->getBlockByUniqueID(cost);
+					delete[] cost;
+
+					char* costume = getCharsForJSON(destBlock->getFieldByName("COSTUME")->content[0]);
+					if (!costume) break;
+
+					int i = parentSprite->getCostumeIDByName(costume);
+					if (i < 0) break;
+
+					parentSprite->currentCostume = i;
+
+					printf("Executing \"switch costume to %s\"\n", costume);
+
+					delete[] costume;
+
+					break;
+				}
+				// looks_costume is used by the looks_switchcostumeto block, so it can't be attached directly to any block
+				case Block::OpCode::looks_nextcostume:
+				{
+					parentSprite->currentCostume++;
+					if (parentSprite->currentCostume >= parentSprite->costumes.size()) parentSprite->currentCostume = 0;
+
+					printf("Executing \"next costume\"\n");
+
+					break;
+				}
+				case Block::OpCode::looks_switchbackdropto:
+				{
+					char* cost = getCharsForJSON(currentBlock->getInputByName("BACKDROP")->content[1]);
+					if (!cost) break;
+					Block* destBlock = parentSprite->getBlockByUniqueID(cost);
+					delete[] cost;
+
+					char* costume = getCharsForJSON(destBlock->getFieldByName("BACKDROP")->content[0]);
+					if (!costume) break;
+
+					Sprite* bg = Executor::instance->targets->sprites[0];
+					int i = bg->getCostumeIDByName(costume);
+					if (i < 0) break;
+
+					bg->currentCostume = i;
+
+					printf("Executing \"switch backgrop to %s\"\n", costume);
+
+					delete[] costume;
+
+					break;
+				}
+				// looks_backdrops is used by the looks_switchbackdropto block, so it can't be attached directly to any block
+				case Block::OpCode::looks_nextbackdrop:
+				{
+					Sprite* bg = Executor::instance->targets->sprites[0];
+
+					bg->currentCostume++;
+					if (bg->currentCostume >= bg->costumes.size()) bg->currentCostume = 0;
+
+					printf("Executing \"next backdrop\"\n");
+
+					break;
+				}
+				case Block::OpCode::looks_changesizeby:
+				{
+					float paramSize = str2float(getGenericInputValueByName(parentSprite, currentBlock, "CHANGE"));
+
+					parentSprite->size += paramSize;
+
+					printf("Executing \"change size by %f\"\n", paramSize);
+
+					break;
+				}
+				case Block::OpCode::looks_setsizeto:
+				{
+					float paramSize = str2float(getGenericInputValueByName(parentSprite, currentBlock, "SIZE"));
+
+					parentSprite->size = paramSize;
+
+					printf("Executing \"set size to %f\"\n", paramSize);
+
+					break;
+				}
+				// looks_changeeffectby, looks_seteffectto & looks_cleargraphiceffects will be implemented later (or won't be imlemented at all)
+				case Block::OpCode::looks_show:
+				{
+					parentSprite->visible = true;
+
+					printf("Executing \"show\"\n");
+
+					break;
+				}
+				case Block::OpCode::looks_hide:
+				{
+					parentSprite->visible = false;
+
+					printf("Executing \"show\"\n");
+
+					break;
+				}
+				case Block::OpCode::looks_gotofrontback:
+				{
+					char* frontback = getCharsForJSON(currentBlock->getFieldByName("FRONT_BACK")->content[0]);
+
+					Targets* targets = Executor::instance->targets;
+					int spriteCount = targets->data.size();
+
+
+					if (strcmp(frontback, "front")) {
+						int maxLayer = INT_MIN;
+						for (int i = 0; i < spriteCount; i++) {
+							Sprite* currentSprite = targets->sprites[i];
+							if (currentSprite->layerOrder > maxLayer) maxLayer = currentSprite->layerOrder;
+						}
+
+						parentSprite->layerOrder = maxLayer;
+					}
+					else if (strcmp(frontback, "back")) {
+						int minLayer = INT_MAX;
+						for (int i = 0; i < spriteCount; i++) {
+							Sprite* currentSprite = targets->sprites[i];
+							if (currentSprite->layerOrder < minLayer) minLayer = currentSprite->layerOrder;
+						}
+
+						parentSprite->layerOrder = minLayer;
+					}
+
+					printf("Executing \"go to %s layer\"\n", frontback);
+
+					delete[] frontback;
+
+					break;
+				}
+				case Block::OpCode::looks_goforwardbackwardlayers:
+				{
+					int paramNum = (int)str2float(getGenericInputValueByName(parentSprite, currentBlock, "NUM"));
+					char* forwback = getCharsForJSON(currentBlock->getFieldByName("FORWARD_BACKWARD")->content[0]);
+
+
+					if (strcmp(forwback, "front"))
+						parentSprite->layerOrder += paramNum;
+					else if (strcmp(forwback, "backward"))
+						parentSprite->layerOrder -= paramNum;
+
+					printf("Executing \"go %s %d layer\"\n", forwback, paramNum);
+
+					delete[] forwback;
+
+					break;
+				}
+				// looks_costumenumbername, looks_backdropnumbername and looks_size are return-only
 			}
 
 			if (currentBlock->next) currentBlock = currentBlock->next;

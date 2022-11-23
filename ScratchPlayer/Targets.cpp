@@ -428,8 +428,6 @@ Block::OpCode Block::getOpCode(const char* opcode) {
 		}
 	}
 
-	printf("Parsed opcode %s into %d\n", opcode, num);
-
 	return (Block::OpCode)num;
 }
 
@@ -1598,6 +1596,7 @@ void BlockSet::execute(Sprite* parentSprite) {
 					float paramSize = str2float(getGenericInputValueByName(parentSprite, currentBlock, "CHANGE"));
 
 					parentSprite->size += paramSize;
+					if (parentSprite->size < 5.0f) parentSprite->size = 5.0f;
 
 					printf("Executing \"change size by %f\"\n", paramSize);
 
@@ -1608,6 +1607,7 @@ void BlockSet::execute(Sprite* parentSprite) {
 					float paramSize = str2float(getGenericInputValueByName(parentSprite, currentBlock, "SIZE"));
 
 					parentSprite->size = paramSize;
+					if (parentSprite->size < 5.0f) parentSprite->size = 5.0f;
 
 					printf("Executing \"set size to %f\"\n", paramSize);
 

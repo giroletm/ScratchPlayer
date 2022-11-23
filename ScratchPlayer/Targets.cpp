@@ -878,19 +878,22 @@ std::string tostr(const T& t) {
 }
 
 float str2float(const char* str) {
-	if (!isFloat(str) || (str[0] == 0)) return 0.0f;
+	if (strcmp(str, "true") == 0) return 1.0f; // False is handled by the !isFloat(str)
+	if (!isFloat(str) || (str[0] == 0)) return 0.0f; 
 	return std::stof(str);
 }
 
 float str2float(std::string str) {
+	if (strcmp(str.data(), "true") == 0) return 1.0f; // False is handled by the !isFloat(str)
 	if (!isFloat(str.data()) || (str[0] == 0)) return 0.0f;
 	return std::stof(str);
 }
 
 std::string getGenericInputValue(Sprite* parentSprite, json content) {
-	if (content[0] == 3) {
+	if (content[0] & 2) {
 		char* bID = getCharsForString(content[1]);
 		std::string dist = parentSprite->getBlockByUniqueID(bID)->getBlockValueAsString(parentSprite);
+		delete[] bID;
 
 		return dist;
 	}
@@ -924,6 +927,7 @@ std::string Block::getBlockValueAsString(Sprite* parentSprite) {
 		case OpCode::operator_subtract:
 		case OpCode::operator_multiply:
 		case OpCode::operator_divide:
+		case OpCode::operator_mod:
 		{
 			std::string operand1 = getGenericInputValue(parentSprite, this->getInputByName("NUM1")->content);
 			std::string operand2 = getGenericInputValue(parentSprite, this->getInputByName("NUM2")->content);
@@ -940,24 +944,171 @@ std::string Block::getBlockValueAsString(Sprite* parentSprite) {
 			else if(this->opcode == OpCode::operator_multiply)
 				return tostr(op1 * op2);
 
-			else //if(this->opcode == OpCode::operator_divide)
+			else if(this->opcode == OpCode::operator_divide)
 				return tostr(op1 / op2);
+
+			else //if(this->opcode == OpCode::operator_mod)
+			{
+				float res = op1;
+				if (op2 > 0)
+					while (res > op2) res -= op2;
+				else if (op2 < 0)
+					while (res < op2) res -= op2;
+				else return "NaN";
+
+				return tostr(res);
+			}
 		}
 		case OpCode::operator_random:
 		{
-			std::string operand1 = getCharsForString(getGenericInputValue(parentSprite, this->getInputByName("FROM")->content));
-			std::string operand2 = getCharsForString(getGenericInputValue(parentSprite, this->getInputByName("TO")->content));
+			std::string operand1 = getGenericInputValue(parentSprite, this->getInputByName("FROM")->content);
+			std::string operand2 = getGenericInputValue(parentSprite, this->getInputByName("TO")->content);
 
 			float op1 = str2float(operand1);
 			float op2 = str2float(operand2);
 
-			bool isFloat = ((float)((int)(op1)) == op1) || ((float)((int)(op2)) == op2);
+			bool isInt = ((float)((int)(op1)) == op1) || ((float)((int)(op2)) == op2);
 
 			float lim = (op2 - op1);
-			if (isFloat)
+			if (!isInt)
 				return tostr(((float)rand() / (float)(RAND_MAX / lim)) + op1);
 			else
 				return tostr((rand() % ((int)lim)) + (int)op1);
+		}
+		case OpCode::operator_gt:
+		case OpCode::operator_lt:
+		case OpCode::operator_equals:
+		case OpCode::operator_and:
+		case OpCode::operator_or:
+		{
+			std::string operand1 = getGenericInputValue(parentSprite, this->getInputByName("OPERAND1")->content);
+			std::string operand2 = getGenericInputValue(parentSprite, this->getInputByName("OPERAND2")->content);
+
+			float op1 = str2float(operand1);
+			float op2 = str2float(operand2);
+			int op1i = (int)op1;
+			int op2i = (int)op2;
+
+			bool result;
+
+			if (this->opcode == OpCode::operator_gt)
+				result = op1 > op2;
+
+			else if (this->opcode == OpCode::operator_lt)
+				result = op1 < op2;
+
+			else if (this->opcode == OpCode::operator_equals)
+				result = op1 == op2;
+
+			else if (this->opcode == OpCode::operator_and)
+				result = op1i && op2i;
+
+			else //if (this->opcode == OpCode::operator_or)
+				result = op1i || op2i;
+
+			return result ? "true" : "false";
+		}
+		case OpCode::operator_not:
+		{
+			std::string operand = getGenericInputValue(parentSprite, this->getInputByName("OPERAND")->content);
+
+			int op1i = (int)str2float(operand);
+
+			return op1i ? "false" : "true";
+		}
+		case OpCode::operator_join:
+		{
+			std::string string1 = getGenericInputValue(parentSprite, this->getInputByName("STRING1")->content);
+			std::string string2 = getGenericInputValue(parentSprite, this->getInputByName("STRING2")->content);
+
+			return string1 + string2;
+		}
+		case OpCode::operator_letter_of:
+		{
+			std::string letter = getGenericInputValue(parentSprite, this->getInputByName("LETTER")->content);
+			std::string string = getGenericInputValue(parentSprite, this->getInputByName("STRING")->content);
+
+			int l = (int)str2float(letter) - 1;
+
+			if (l < 0 || l >= string.size()) return "";
+
+			return base + string[l];
+		}
+		case OpCode::operator_length:
+		{
+			std::string string = getGenericInputValue(parentSprite, this->getInputByName("STRING")->content);
+
+			return tostr(string.size());
+		}
+		case OpCode::operator_contains:
+		{
+			std::string string1 = getGenericInputValue(parentSprite, this->getInputByName("STRING1")->content);
+			std::string string2 = getGenericInputValue(parentSprite, this->getInputByName("STRING2")->content);
+
+			return (string1.find(string2) != std::string::npos) ? "true" : "false";
+		}
+		case OpCode::operator_round:
+		{
+			std::string num = getGenericInputValue(parentSprite, this->getInputByName("NUM")->content);
+
+			float n = str2float(num);
+
+			return tostr(round(n));
+		}
+		case OpCode::operator_mathop:
+		{
+			std::string num = getGenericInputValue(parentSprite, this->getInputByName("NUM")->content);
+			std::string op = this->getFieldByName("OPERATOR")->content[0];
+
+			float n = str2float(num);
+			float result = 0.0f;
+
+			const char* opr = op.c_str();
+
+			if (strcmp(opr, "abs") == 0) {
+				result = abs(n);
+			}
+			else if (strcmp(opr, "floor") == 0) {
+				result = floorf(n);
+			}
+			else if (strcmp(opr, "ceiling") == 0) {
+				result = ceilf(n);
+			}
+			else if (strcmp(opr, "sqrt") == 0) {
+				result = sqrtf(n);
+			}
+			else if (strcmp(opr, "sin") == 0) {
+				result = sinf(n * (2.0f*M_PI) / 360.0f);
+			}
+			else if (strcmp(opr, "cos") == 0) {
+				result = cosf(n * (2.0f * M_PI) / 360.0f);
+			}
+			else if (strcmp(opr, "tan") == 0) {
+				result = tanf(n * (2.0f * M_PI) / 360.0f);
+			}
+			else if (strcmp(opr, "asin") == 0) {
+				result = asinf(n) * 360.0f / (2.0f * M_PI);
+			}
+			else if (strcmp(opr, "acos") == 0) {
+				result = acosf(n) * 360.0f / (2.0f * M_PI);
+			}
+			else if (strcmp(opr, "atan") == 0) {
+				result = atanf(n) * 360.0f / (2.0f * M_PI);
+			}
+			else if (strcmp(opr, "ln") == 0) {
+				result = logf(n);
+			}
+			else if (strcmp(opr, "log") == 0) {
+				result = log10f(n);
+			}
+			else if (strcmp(opr, "e ^") == 0) {
+				result = expf(n);
+			}
+			else if (strcmp(opr, "10 ^") == 0) {
+				result = powf(10.0f, n);
+			}
+
+			return tostr(result);
 		}
 	}
 

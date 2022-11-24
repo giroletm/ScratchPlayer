@@ -48,6 +48,69 @@ void Executor::executeBlocks() {
     }
 }
 
+void Executor::triggerBackdropSwitch(const char* name) {
+    int spriteCount = targets->data.size();
+    for (int spriteID = 0; spriteID < spriteCount; spriteID++) {
+        Sprite* currentSprite = targets->sprites[spriteID];
+
+        int blockSetCount = currentSprite->blockSets.size();
+        for (int bSID = 0; bSID < blockSetCount; bSID++) {
+            BlockSet* currentBS = currentSprite->blockSets[bSID];
+
+            if (currentBS->firstBlock->opcode == Block::OpCode::event_whenbackdropswitchesto) {
+                char* varCmp = getCharsForJSON(currentBS->firstBlock->getFieldByName("BACKDROP")->content[0]);
+
+                if (strcmp(varCmp, name) == 0) currentBS->forceExecute = true;
+
+                delete[] varCmp;
+            }
+        }
+    }
+}
+
+void Executor::triggerBroadcast(const char* uniqueID) {
+    int spriteCount = targets->data.size();
+    for (int spriteID = 0; spriteID < spriteCount; spriteID++) {
+        Sprite* currentSprite = targets->sprites[spriteID];
+
+        int blockSetCount = currentSprite->blockSets.size();
+        for (int bSID = 0; bSID < blockSetCount; bSID++) {
+            BlockSet* currentBS = currentSprite->blockSets[bSID];
+
+            if (currentBS->firstBlock->opcode == Block::OpCode::event_whenbroadcastreceived) {
+                char* varCmp = getCharsForJSON(currentBS->firstBlock->getFieldByName("BROADCAST_OPTION")->content[1]);
+
+                if (strcmp(varCmp, uniqueID) == 0) currentBS->forceExecute = true;
+
+                delete[] varCmp;
+            }
+        }
+    }
+}
+
+bool Executor::isBroadcastOn(const char* uniqueID) {
+    int spriteCount = targets->data.size();
+    for (int spriteID = 0; spriteID < spriteCount; spriteID++) {
+        Sprite* currentSprite = targets->sprites[spriteID];
+
+        int blockSetCount = currentSprite->blockSets.size();
+        for (int bSID = 0; bSID < blockSetCount; bSID++) {
+            BlockSet* currentBS = currentSprite->blockSets[bSID];
+
+            if ((currentBS->firstBlock->opcode == Block::OpCode::event_whenbroadcastreceived) && currentBS->currentBlock) {
+                char* varCmp = getCharsForJSON(currentBS->firstBlock->getFieldByName("BROADCAST_OPTION")->content[1]);
+
+                bool corresponds = (strcmp(varCmp, uniqueID) == 0);
+                delete[] varCmp;
+
+                if (corresponds) return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 void Executor::render() {
     int spriteCount = targets->data.size();
     int minLayer = INT_MAX;

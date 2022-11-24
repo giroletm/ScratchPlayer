@@ -18,4 +18,9 @@ public:
 
 	void render();
 	void executeBlocks();
+
+	void triggerBackdropSwitch(const char* name);
+	void triggerBroadcast(const char* uniqueID);
+	bool isBroadcastOn(const char* uniqueID);
+
 };

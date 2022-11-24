@@ -4,25 +4,6 @@
 #include "Executor.h"
 
 
-char* getCharsForString(std::string str) {
-	int len = str.length();
-
-	char* chr = new char[len + 1];
-	chr[len] = 0;
-	for (int i = 0; i < len; i++) {
-		chr[i] = str[i];
-	}
-
-	return chr;
-}
-
-inline char* getCharsForJSON(json data) {
-	if (data.is_null()) return 0;
-
-	return getCharsForString(data);
-}
-
-
 Targets::Targets(json content) {
 	data = content["targets"];
 
@@ -150,7 +131,13 @@ Variable::Variable(std::string id, json data) {
 	this->uniqueID = getCharsForString(id);
 
 	this->name = getCharsForJSON(data[0]);
-	this->value = getCharsForJSON(data[1]);
+
+	if (data[1].is_number()) {
+		float v = data[1];
+		this->value = getCharsForString(tostr(v));
+	}
+	else
+		this->value = getCharsForJSON(data[1]);
 
 
 	#ifdef _DEBUG
@@ -478,6 +465,10 @@ BlockSet::BlockSet(Block* block) {
 	this->framesToWait = 0;
 	this->scheduledFrameAction = -1;
 	this->doneFlag = false;
+	this->forceExecute = false;
+	this->locked = false;
+
+	this->broadcastWait = 0;
 }
 
 Input::Input(std::string id, json data) {
@@ -859,42 +850,12 @@ void Block::doParenting(Sprite* sprite, json data) {
 	else this->next = 0;
 }
 
-#include <sstream>
-
-bool isFloat(const char* str) {
-	bool hasDot = false;
-	int len = strlen(str);
-
-	for (int i = ((str[0] == '-') ? 1 : 0); i < len; i++) {
-		if (str[i] < '0' || str[i] > '9') {
-			if (!hasDot) {
-				if (str[i] == '.') hasDot = true;
-				else return false;
-			}
-			else return false;
-		}
-	}
-
-	return str[len - 1] != '.';
+float getLoudness() {
+	return -1.0f; // Not implemented yet so consider no microphone
 }
 
-template <typename T>
-std::string tostr(const T& t) {
-	std::ostringstream os;
-	os << t;
-	return os.str();
-}
-
-float str2float(const char* str) {
-	if (strcmp(str, "true") == 0) return 1.0f; // False is handled by the !isFloat(str)
-	if (!isFloat(str) || (str[0] == 0)) return 0.0f; 
-	return std::stof(str);
-}
-
-float str2float(std::string str) {
-	if (strcmp(str.data(), "true") == 0) return 1.0f; // False is handled by the !isFloat(str)
-	if (!isFloat(str.data()) || (str[0] == 0)) return 0.0f;
-	return std::stof(str);
+float getTimer() {
+	return (float)Game::instance->getFrameCount() / 60.0f;
 }
 
 std::string getGenericInputValue(Sprite* parentSprite, json content) {
@@ -1174,6 +1135,11 @@ void BlockSet::execute(Sprite* parentSprite) {
 		return;
 	}
 
+	if (broadcastWait) {
+		if (!Executor::instance->isBroadcastOn(broadcastWait)) broadcastWait = 0;
+		else return;
+	}
+
 	while (true) {
 		if (currentBlock == 0) {
 			bool triggered = false;
@@ -1205,20 +1171,46 @@ void BlockSet::execute(Sprite* parentSprite) {
 				}
 				case Block::OpCode::event_whenbackdropswitchesto:
 				{
+					// Uses forceExecute
 					break;
 				}
 				case Block::OpCode::event_whengreaterthan:
 				{
+					float value = str2float(getGenericInputValueByName(parentSprite, firstBlock, "VALUE"));
+					char* varCmp = getCharsForJSON(firstBlock->getFieldByName("WHENGREATERTHANMENU")->content[0]);
+
+					float val = 0.0f;
+					if (strcmp(varCmp, "LOUDNESS") == 0) {
+						val = getLoudness();
+					}
+					if (strcmp(varCmp, "TIMER") == 0) {
+						val = getTimer();
+					}
+
+					if (!locked)
+						triggered = val > value;
+
+					locked = val > value;
+
+					delete[] varCmp;
+
 					break;
 				}
 				case Block::OpCode::event_whenbroadcastreceived:
 				{
+					// Uses forceExecute
 					break;
 				}
 				case Block::OpCode::control_start_as_clone:
 				{
+					// Uses forceExecute
 					break;
 				}
+			}
+
+			if (forceExecute) {
+				forceExecute = false;
+				triggered = true;
 			}
 
 			//if (triggered) printf("Triggered!\n");
@@ -1564,18 +1556,20 @@ void BlockSet::execute(Sprite* parentSprite) {
 					Block* destBlock = parentSprite->getBlockByUniqueID(cost);
 					delete[] cost;
 
-					char* costume = getCharsForJSON(destBlock->getFieldByName("BACKDROP")->content[0]);
-					if (!costume) break;
+					char* backdrop = getCharsForJSON(destBlock->getFieldByName("BACKDROP")->content[0]);
+					if (!backdrop) break;
 
 					Sprite* bg = Executor::instance->targets->sprites[0];
-					int i = bg->getCostumeIDByName(costume);
+					int i = bg->getCostumeIDByName(backdrop);
 					if (i < 0) break;
 
 					bg->currentCostume = i;
 
-					printf("Executing \"switch backgrop to %s\"\n", costume);
+					Executor::instance->triggerBackdropSwitch(backdrop);
 
-					delete[] costume;
+					printf("Executing \"switch backgrop to %s\"\n", backdrop);
+
+					delete[] backdrop;
 
 					break;
 				}
@@ -1588,6 +1582,8 @@ void BlockSet::execute(Sprite* parentSprite) {
 					if (bg->currentCostume >= bg->costumes.size()) bg->currentCostume = 0;
 
 					printf("Executing \"next backdrop\"\n");
+
+					Executor::instance->triggerBackdropSwitch(bg->costumes[bg->currentCostume]->name);
 
 					break;
 				}
@@ -1681,6 +1677,35 @@ void BlockSet::execute(Sprite* parentSprite) {
 					break;
 				}
 				// looks_costumenumbername, looks_backdropnumbername and looks_size are return-only
+				case Block::OpCode::event_broadcast:
+				{
+					char* brName = getCharsForJSON(currentBlock->getInputByName("BROADCAST_INPUT")->content[1][1]);
+					char* brID = getCharsForJSON(currentBlock->getInputByName("BROADCAST_INPUT")->content[1][2]);
+
+					Executor::instance->triggerBroadcast(brID);
+
+					printf("Executing \"broadcast %s\"\n", brName);
+
+					delete[] brName;
+					delete[] brID;
+
+					break;
+				}
+				case Block::OpCode::event_broadcastandwait:
+				{
+					char* brName = getCharsForJSON(currentBlock->getInputByName("BROADCAST_INPUT")->content[1][1]);
+					char* brID = getCharsForJSON(currentBlock->getInputByName("BROADCAST_INPUT")->content[1][2]);
+
+					Executor::instance->triggerBroadcast(brID);
+
+					printf("Executing \"broadcast %s and wait\"\n", brName);
+
+					broadcastWait = brID;
+
+					delete[] brName;
+
+					break;
+				}
 			}
 
 			if (currentBlock->next) currentBlock = currentBlock->next;

@@ -327,6 +327,8 @@ public:
 	Block* currentBlock;
 
 	bool doneFlag;
+	bool forceExecute;
+	bool locked;
 
 	int framesToWait;
 
@@ -335,6 +337,8 @@ public:
 	float scheduledXEnd;
 	float scheduledYTrans;
 	float scheduledYEnd;
+
+	char* broadcastWait;
 
 	void execute(Sprite* parentSprite);
 };

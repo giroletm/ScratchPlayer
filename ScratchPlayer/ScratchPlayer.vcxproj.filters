@@ -33,6 +33,9 @@
     <ClCompile Include="InputHandler.cpp">
       <Filter>Fichiers sources</Filter>
     </ClCompile>
+    <ClCompile Include="common.cpp">
+      <Filter>Fichiers d%27en-tête</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ZipFile.h">

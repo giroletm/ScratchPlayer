@@ -324,7 +324,7 @@ public:
 	~BlockSet();
 
 	Block* firstBlock;
-	Block* currentBlock;
+	std::vector<Block*> stackBlocks;
 
 	bool doneFlag;
 	bool forceExecute;
@@ -339,6 +339,10 @@ public:
 	float scheduledYEnd;
 
 	char* broadcastWait;
+
+	int currentSubStack;
+	std::vector<int> repeatTimes;
+	std::vector<Block*> repeatBlock;
 
 	void execute(Sprite* parentSprite);
 };

@@ -461,7 +461,7 @@ Block::Block(std::string id, json data) {
 
 BlockSet::BlockSet(Block* block) {
 	this->firstBlock = block;
-	this->currentBlock = 0;
+	this->stackBlocks.clear();
 	this->framesToWait = 0;
 	this->scheduledFrameAction = -1;
 	this->doneFlag = false;
@@ -469,6 +469,9 @@ BlockSet::BlockSet(Block* block) {
 	this->locked = false;
 
 	this->broadcastWait = 0;
+
+	this->currentSubStack = 0;
+	this->repeatTimes.clear();
 }
 
 Input::Input(std::string id, json data) {
@@ -718,6 +721,8 @@ Sprite* Targets::getSpriteByName(const char* name) {
 }
 
 Variable* Targets::getVariableByUniqueID(const char* uniqueID, int spriteID) {
+	if (!uniqueID) return 0;
+
 	Variable* bgVar = this->sprites[0]->getVariableByUniqueID(uniqueID);
 	if (bgVar) return bgVar;
 	else if(spriteID != 0) return this->sprites[spriteID]->getVariableByUniqueID(uniqueID);
@@ -726,6 +731,8 @@ Variable* Targets::getVariableByUniqueID(const char* uniqueID, int spriteID) {
 }
 
 List* Targets::getListByUniqueID(const char* uniqueID, int spriteID) {
+	if (!uniqueID) return 0;
+
 	List* bgList = this->sprites[0]->getListByUniqueID(uniqueID);
 	if (bgList) return bgList;
 	else if (spriteID != 0) return this->sprites[spriteID]->getListByUniqueID(uniqueID);
@@ -734,6 +741,8 @@ List* Targets::getListByUniqueID(const char* uniqueID, int spriteID) {
 }
 
 Broadcast* Targets::getBroadcastByUniqueID(const char* uniqueID, int spriteID) {
+	if (!uniqueID) return 0;
+
 	Broadcast* bgBC = this->sprites[0]->getBroadcastByUniqueID(uniqueID);
 	if (bgBC) return bgBC;
 	else if (spriteID != 0) return this->sprites[spriteID]->getBroadcastByUniqueID(uniqueID);
@@ -744,6 +753,8 @@ Broadcast* Targets::getBroadcastByUniqueID(const char* uniqueID, int spriteID) {
 
 
 Variable* Sprite::getVariableByUniqueID(const char* uniqueID) {
+	if (!uniqueID) return 0;
+
 	int varsCount = this->variables.size();
 	for (int i = 0; i < varsCount; i++) {
 		if (strcmp(this->variables[i]->uniqueID, uniqueID) == 0) return this->variables[i];
@@ -753,6 +764,8 @@ Variable* Sprite::getVariableByUniqueID(const char* uniqueID) {
 }
 
 List* Sprite::getListByUniqueID(const char* uniqueID) {
+	if (!uniqueID) return 0;
+
 	int listsCount = this->lists.size();
 	for (int i = 0; i < listsCount; i++) {
 		if (strcmp(this->lists[i]->uniqueID, uniqueID) == 0) return this->lists[i];
@@ -762,6 +775,8 @@ List* Sprite::getListByUniqueID(const char* uniqueID) {
 }
 
 Broadcast* Sprite::getBroadcastByUniqueID(const char* uniqueID) {
+	if (!uniqueID) return 0;
+
 	int broadcastsCount = this->broadcasts.size();
 	for (int i = 0; i < broadcastsCount; i++) {
 		if (strcmp(this->broadcasts[i]->uniqueID, uniqueID) == 0) return this->broadcasts[i];
@@ -771,6 +786,7 @@ Broadcast* Sprite::getBroadcastByUniqueID(const char* uniqueID) {
 }
 
 Block* Sprite::getBlockByUniqueID(const char* uniqueID) {
+	if (!uniqueID) return 0;
 
 	int blockCount = this->blocks.size();
 	for (int i = 0; i < blockCount; i++) {
@@ -867,8 +883,12 @@ std::string getGenericInputValue(Sprite* parentSprite, json content) {
 		return dist;
 	}
 	else {
-		std::string dist = content[1][1];
-		return dist;
+		json cnt = content[1];
+		if (!cnt.is_null()) {
+			std::string dist = cnt[1];
+			return dist;
+		}
+		else return "null";
 	}
 }
 
@@ -1141,7 +1161,7 @@ void BlockSet::execute(Sprite* parentSprite) {
 	}
 
 	while (true) {
-		if (currentBlock == 0) {
+		if ((currentSubStack == 0) && (stackBlocks.size() == 0)) {
 			bool triggered = false;
 
 			switch (firstBlock->opcode) {
@@ -1216,12 +1236,19 @@ void BlockSet::execute(Sprite* parentSprite) {
 			//if (triggered) printf("Triggered!\n");
 			//else printf("WaitForTrigger: %d (%d)\n", this->doneFlag, this->firstBlock->opcode);
 
-			if (triggered) currentBlock = firstBlock->next;
+			if (triggered) {
+				stackBlocks.push_back(firstBlock->next);
+				repeatBlock.push_back(firstBlock->next);
+				repeatTimes.push_back(1);
+			}
 			else return;
 		}
 
+		Block* currentBlock = stackBlocks[currentSubStack];
 		bool halt = false;
 		if (currentBlock) {
+			bool switchSS = false;
+			bool noNext = false;
 			printf("Block %p, opcode %d -> ", currentBlock, currentBlock->opcode);
 			switch (currentBlock->opcode) {
 				case Block::OpCode::unsupported:
@@ -1567,7 +1594,7 @@ void BlockSet::execute(Sprite* parentSprite) {
 
 					Executor::instance->triggerBackdropSwitch(backdrop);
 
-					printf("Executing \"switch backgrop to %s\"\n", backdrop);
+					printf("Executing \"switch backdrop to %s\"\n", backdrop);
 
 					delete[] backdrop;
 
@@ -1706,12 +1733,257 @@ void BlockSet::execute(Sprite* parentSprite) {
 
 					break;
 				}
+				case Block::OpCode::control_wait:
+				{
+					float paramDura = str2float(getGenericInputValueByName(parentSprite, currentBlock, "DURATION"));
+
+					framesToWait = (int)round(paramDura * 60.0f);
+
+					printf("Executing \"wait %f seconds\"\n", paramDura);
+
+					halt = true;
+
+					break;
+				}
+				case Block::OpCode::control_repeat:
+				{
+					int paramTimes = (int)str2float(getGenericInputValueByName(parentSprite, currentBlock, "TIMES"));
+					Input* ipt = currentBlock->getInputByName("SUBSTACK");
+					if (!ipt) break;
+
+					char* ss = getCharsForJSON(ipt->content[1]);
+					Block* b = parentSprite->getBlockByUniqueID(ss);
+					delete[] ss;
+					if (!b) break;
+
+					repeatTimes.push_back(paramTimes);
+					stackBlocks.push_back(b);
+					repeatBlock.push_back(b);
+
+					stackBlocks[currentSubStack] = currentBlock->next;
+
+					switchSS = true;
+
+					printf("Executing \"repeat %d time (%s)\"\n", paramTimes, b->uniqueID);
+
+
+					break;
+				}
+				case Block::OpCode::control_forever:
+				{
+					Input* ipt = currentBlock->getInputByName("SUBSTACK");
+					if (!ipt) break;
+
+					char* ss = getCharsForJSON(ipt->content[1]);
+					Block* b = parentSprite->getBlockByUniqueID(ss);
+					if (!b) break;
+
+					repeatTimes.push_back(-1);
+					stackBlocks.push_back(b);
+					repeatBlock.push_back(b);
+
+					stackBlocks[currentSubStack] = currentBlock->next;
+
+					switchSS = true;
+
+					printf("Executing \"repeat forever (%s)\"\n", ss);
+
+					delete[] ss;
+
+					break;
+				}
+				case Block::OpCode::control_if:
+				{
+					Input* ipt = currentBlock->getInputByName("SUBSTACK");
+					if (!ipt) break;
+
+					Input* cnd = currentBlock->getInputByName("CONDITION");
+					if (!cnd) break;
+
+					char* ss = getCharsForJSON(ipt->content[1]);
+					Block* b = parentSprite->getBlockByUniqueID(ss);
+					delete[] ss;
+					if (!b) break;
+
+					bool doCond = (int)str2float(getGenericInputValue(parentSprite, cnd->content));
+
+					if (doCond && b) {
+						repeatTimes.push_back(1);
+						stackBlocks.push_back(b);
+						repeatBlock.push_back(b);
+
+						stackBlocks[currentSubStack] = currentBlock->next;
+
+						switchSS = true;
+					}
+
+					printf("Executing \"if %d then %s\"\n", doCond, b ? b->uniqueID : "0");
+
+					break;
+				}
+				case Block::OpCode::control_if_else:
+				{
+					Input* ipt = currentBlock->getInputByName("SUBSTACK");
+					Input* ipt2 = currentBlock->getInputByName("SUBSTACK2");
+
+					if (!ipt && !ipt2) break;
+
+					Input* cnd = currentBlock->getInputByName("CONDITION");
+
+					Block* b = 0;
+					Block* b2 = 0;
+					if (ipt) {
+						char* ss = getCharsForJSON(ipt->content[1]);
+						b = parentSprite->getBlockByUniqueID(ss);
+						delete[] ss;
+					}
+					if (ipt2) {
+						char* ss2 = getCharsForJSON(ipt2->content[1]);
+						b2 = parentSprite->getBlockByUniqueID(ss2);
+						delete[] ss2;
+					}
+
+
+					bool doCond = (cnd) ? (int)str2float(getGenericInputValue(parentSprite, cnd->content)) : 0;
+
+					//repeatNext = currentBlock->next;
+					//currentBlock = 0;
+
+					if (doCond) {
+						if (b) {
+							repeatTimes.push_back(1);
+							stackBlocks.push_back(b);
+							repeatBlock.push_back(b);
+
+							stackBlocks[currentSubStack] = currentBlock->next;
+
+							switchSS = true;
+						}
+					}
+					else {
+						if (b2) {
+							repeatTimes.push_back(1);
+							stackBlocks.push_back(b2);
+							repeatBlock.push_back(b2);
+
+							stackBlocks[currentSubStack] = currentBlock->next;
+
+							switchSS = true;
+						}
+					}
+
+					printf("Executing \"if %d then %s else %s\"\n", doCond, b ? b->uniqueID : "0", b2 ? b2->uniqueID : "0");
+
+					break;
+				}
+				case Block::OpCode::control_wait_until:
+				{
+					Input* cnd = currentBlock->getInputByName("CONDITION");
+					if (!cnd) {
+						noNext = true;
+						break;
+					}
+
+					char* ss = getCharsForJSON(cnd->content[1]);
+					Block *b = parentSprite->getBlockByUniqueID(ss);
+					delete[] ss;
+
+					int val = (b) ? (int)str2float(b->getBlockValueAsString(parentSprite)) : 0;
+					if (!val) {
+						noNext = true;
+						halt = true;
+					}
+
+					printf("Executing \"wait until %s (=%d)\"\n", b->uniqueID, val);
+
+					break;
+				}
+				case Block::OpCode::control_repeat_until:
+				{
+					Input* cnd = currentBlock->getInputByName("CONDITION");
+					Input* ipt = currentBlock->getInputByName("SUBSTACK");
+					if (!cnd) {
+						noNext = true;
+						break;
+					}
+
+					char* ss = getCharsForJSON(cnd->content[1]);
+					Block *b = parentSprite->getBlockByUniqueID(ss);
+					delete[] ss;
+
+					int val = (b) ? (int)str2float(b->getBlockValueAsString(parentSprite)) : 0;
+					if (!val) {
+						halt = true;
+
+						Input* ipt = currentBlock->getInputByName("SUBSTACK");
+						if (!ipt) break;
+
+						char* ss = getCharsForJSON(ipt->content[1]);
+						Block* b2 = parentSprite->getBlockByUniqueID(ss);
+						delete[] ss;
+						if (!b) break;
+
+						repeatTimes.push_back(1);
+						stackBlocks.push_back(b2);
+						repeatBlock.push_back(b2);
+
+						switchSS = true;
+					}
+
+					printf("Executing \"repeat until %s (=%d)\"\n", b->uniqueID, val);
+
+					break;
+				}
 			}
 
-			if (currentBlock->next) currentBlock = currentBlock->next;
-			else {
-				currentBlock = 0;
-				break;
+			if (!noNext) {
+				if (!switchSS) {
+					if (currentBlock->next) {
+						//printf("Switching to next block\n");
+						stackBlocks[currentSubStack] = currentBlock->next;
+					}
+					else {
+						while (true) {
+							//printf("No next block: ");
+							if (currentSubStack == 0) {
+								//printf("Finished script\n");
+								stackBlocks.clear();
+								repeatBlock.clear();
+								repeatTimes.clear();
+
+								break;
+							}
+							else if (repeatTimes[currentSubStack] == 0) {
+								//printf("Back one stack\n");
+								stackBlocks.pop_back();
+								repeatBlock.pop_back();
+								repeatTimes.pop_back();
+
+								currentSubStack--;
+								currentBlock = stackBlocks[currentSubStack];
+								stackBlocks[currentSubStack] = currentBlock;
+
+								if (currentBlock != 0) break;
+
+							}
+							else {
+								//printf("Got a repeat to do (%d) at %p\n", repeatTimes[currentSubStack], repeatBlock[currentSubStack]);
+								stackBlocks[currentSubStack] = repeatBlock[currentSubStack];
+								repeatTimes[currentSubStack]--;
+
+								break;
+							}
+						}
+
+						break;
+					}
+				}
+				else {
+					//printf("Forward one stack\n");
+					currentSubStack++;
+					repeatTimes[currentSubStack]--;
+					currentBlock = stackBlocks[currentSubStack];
+				}
 			}
 
 			if (halt) break;

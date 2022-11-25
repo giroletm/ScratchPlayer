@@ -97,7 +97,7 @@ bool Executor::isBroadcastOn(const char* uniqueID) {
         for (int bSID = 0; bSID < blockSetCount; bSID++) {
             BlockSet* currentBS = currentSprite->blockSets[bSID];
 
-            if ((currentBS->firstBlock->opcode == Block::OpCode::event_whenbroadcastreceived) && currentBS->currentBlock) {
+            if ((currentBS->firstBlock->opcode == Block::OpCode::event_whenbroadcastreceived) && currentBS->stackBlocks.size() != 0) {
                 char* varCmp = getCharsForJSON(currentBS->firstBlock->getFieldByName("BROADCAST_OPTION")->content[1]);
 
                 bool corresponds = (strcmp(varCmp, uniqueID) == 0);

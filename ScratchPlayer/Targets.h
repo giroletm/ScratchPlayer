@@ -345,6 +345,7 @@ public:
 	std::vector<Block*> repeatBlock;
 
 	void execute(Sprite* parentSprite);
+	void forceStop();
 };
 
 class Input {

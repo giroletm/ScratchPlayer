@@ -23,4 +23,5 @@ public:
 	void triggerBroadcast(const char* uniqueID);
 	bool isBroadcastOn(const char* uniqueID);
 
+	void stopBlockSets(BlockSet* bs=0, Sprite* s=0);
 };

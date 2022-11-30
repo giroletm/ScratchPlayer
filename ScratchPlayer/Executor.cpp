@@ -48,6 +48,30 @@ void Executor::executeBlocks() {
     }
 }
 
+void Executor::stopBlockSets(BlockSet* bs, Sprite* s) {
+    if (bs && s) {
+        int blockSetCount = s->blockSets.size();
+        for (int bSID = 0; bSID < blockSetCount; bSID++) {
+            BlockSet* currentBS = s->blockSets[bSID];
+
+            if(currentBS != bs) currentBS->forceStop();
+        }
+    }
+    else {
+        int spriteCount = targets->data.size();
+        for (int spriteID = 0; spriteID < spriteCount; spriteID++) {
+            Sprite* currentSprite = targets->sprites[spriteID];
+
+            int blockSetCount = currentSprite->blockSets.size();
+            for (int bSID = 0; bSID < blockSetCount; bSID++) {
+                BlockSet* currentBS = currentSprite->blockSets[bSID];
+
+                currentBS->forceStop();
+            }
+        }
+    }
+}
+
 void Executor::triggerBackdropSwitch(const char* name) {
     int spriteCount = targets->data.size();
     for (int spriteID = 0; spriteID < spriteCount; spriteID++) {

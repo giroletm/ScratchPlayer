@@ -468,10 +468,19 @@ BlockSet::BlockSet(Block* block) {
 	this->forceExecute = false;
 	this->locked = false;
 
+	this->framesToWait = 0;
+
+	this->scheduledFrameAction = 0;
+	this->scheduledXTrans = 0.0f;
+	this->scheduledXEnd = 0.0f;
+	this->scheduledYTrans = 0.0f;
+	this->scheduledYEnd = 0.0f;
+
 	this->broadcastWait = 0;
 
 	this->currentSubStack = 0;
 	this->repeatTimes.clear();
+	this->repeatBlock.clear();
 }
 
 Input::Input(std::string id, json data) {
@@ -1131,6 +1140,28 @@ std::string Block::getBlockValueAsString(Sprite* parentSprite) {
 	}
 
 	return base;
+}
+
+void BlockSet::forceStop() {
+	stackBlocks.clear();
+	this->framesToWait = 0;
+	this->scheduledFrameAction = -1;
+	this->forceExecute = false;
+	this->locked = false;
+
+	this->framesToWait = 0;
+
+	this->scheduledFrameAction = 0;
+	this->scheduledXTrans = 0.0f;
+	this->scheduledXEnd = 0.0f;
+	this->scheduledYTrans = 0.0f;
+	this->scheduledYEnd = 0.0f;
+
+	this->broadcastWait = 0;
+
+	currentSubStack = 0;
+	repeatBlock.clear();
+	repeatTimes.clear();
 }
 
 #include <math.h>
@@ -1931,6 +1962,28 @@ void BlockSet::execute(Sprite* parentSprite) {
 					}
 
 					printf("Executing \"repeat until %s (=%d)\"\n", b->uniqueID, val);
+
+					break;
+				}
+				case Block::OpCode::control_stop:
+				{
+					std::string opt = currentBlock->getFieldByName("STOP_OPTION")->content[0];
+
+					bool ret = false;
+					if (strcmp(opt.c_str(), "other scripts in sprite") == 0) {
+						Executor::instance->stopBlockSets(this, parentSprite);
+					}
+					else if (strcmp(opt.c_str(), "all") == 0) {
+						Executor::instance->stopBlockSets();
+						ret = true;
+					}
+					else if (strcmp(opt.c_str(), "this script") == 0) {
+						this->forceStop();
+						ret = true;
+					}
+
+					printf("Executing \"stop %s\"\n", opt.c_str());
+					if (ret) return;
 
 					break;
 				}

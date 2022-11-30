@@ -12,12 +12,12 @@ Targets::Targets(json content) {
 	printf("Found %d sprites.\n", spriteCount);
 	#endif
 
-	this->sprites = new Sprite*[spriteCount];
+	this->sprites.clear();
 	for (int i = 0; i < spriteCount; i++) {
 		#ifdef _DEBUG
 		printf("Sprite %d:\n", i);
 		#endif
-		this->sprites[i] = new Sprite(data[i]);
+		this->sprites.push_back(new Sprite(data[i]));
 	}
 }
 
@@ -29,6 +29,8 @@ Sprite::Sprite(json data) {
 	this->volume = data["volume"];
 	this->layerOrder = data["layerOrder"];
 
+	this->isClone = false;
+
 	if (this->isStage) {
 		this->tempo = data["tempo"];
 		this->videoTransparency = data["videoTransparency"];
@@ -39,6 +41,9 @@ Sprite::Sprite(json data) {
 		this->x = 0;
 		this->y = 0;
 		this->size = 100;
+		this->direction = 90;
+		this->draggable = false;
+		this->rotationStyle = 0;
 	}
 	else {
 		this->visible = data["visible"];
@@ -48,6 +53,11 @@ Sprite::Sprite(json data) {
 		this->direction = data["direction"];
 		this->draggable = data["draggable"];
 		this->rotationStyle = getCharsForJSON(data["rotationStyle"]);
+
+		this->tempo = 0;
+		this->videoTransparency = 0;
+		this->videoState = 0;
+		this->textToSpeechLanguage = 0;
 	}
 
 	json varsData = data["variables"];
@@ -125,6 +135,79 @@ Sprite::Sprite(json data) {
 	for (int i = 0; i < soundsCount; i++) {
 		this->sounds.push_back(new Sound(soundsData[i]));
 	}
+}
+
+#pragma warning(disable:4996)
+Sprite::Sprite(Sprite* original) {
+	this->isStage = original->isStage;
+	this->name = original->name;
+
+	this->currentCostume = original->currentCostume;
+	this->volume = original->volume;
+	this->layerOrder = original->layerOrder;
+
+	this->isClone = true;
+
+	this->tempo = original->tempo;
+	this->videoTransparency = original->videoTransparency;
+
+	if (original->videoState) {
+		this->videoState = new char[strlen(original->videoState) + 1];
+		strcpy(this->videoState, original->videoState);
+	}
+	else this->videoState = 0;
+
+	if (original->textToSpeechLanguage) {
+		this->textToSpeechLanguage = new char[strlen(original->textToSpeechLanguage) + 1];
+		strcpy(this->textToSpeechLanguage, original->textToSpeechLanguage);
+	}
+	else this->textToSpeechLanguage = 0;
+
+	this->visible = original->visible;
+	this->x = original->x;
+	this->y = original->y;
+	this->size = original->size;
+	this->direction = original->direction;
+	this->draggable = original->draggable;
+
+	if (original->rotationStyle) {
+		this->rotationStyle = new char[strlen(original->rotationStyle) + 1];
+		strcpy(this->rotationStyle, original->rotationStyle);
+	}
+	else this->rotationStyle = 0;
+
+	int varsCount = original->variables.size();
+	int listsCount = original->lists.size();
+	int broadcastsCount = original->broadcasts.size();
+	int blocksCount = original->blocks.size();
+	int blockSetsCount = original->blockSets.size();
+	int commentsCount = original->comments.size();
+	int costumesCount = original->costumes.size();
+	int soundsCount = original->sounds.size();
+
+	for (int i = 0; i < varsCount; i++) 
+		this->variables.push_back(original->variables[i]);
+
+	for (int i = 0; i < listsCount; i++) 
+		this->lists.push_back(original->lists[i]);
+
+	for (int i = 0; i < broadcastsCount; i++) 
+		this->broadcasts.push_back(original->broadcasts[i]);
+
+	for (int i = 0; i < blocksCount; i++) 
+		this->blocks.push_back(original->blocks[i]);
+
+	for (int i = 0; i < blockSetsCount; i++) 
+		this->blockSets.push_back(new BlockSet(original->blockSets[i]->firstBlock));
+
+	for (int i = 0; i < commentsCount; i++)
+		this->comments.push_back(original->comments[i]);
+
+	for (int i = 0; i < costumesCount; i++) 
+		this->costumes.push_back(original->costumes[i]);
+
+	for (int i = 0; i < soundsCount; i++) 
+		this->sounds.push_back(original->sounds[i]);
 }
 
 Variable::Variable(std::string id, json data) {
@@ -470,7 +553,6 @@ BlockSet::BlockSet(Block* block) {
 
 	this->framesToWait = 0;
 
-	this->scheduledFrameAction = 0;
 	this->scheduledXTrans = 0.0f;
 	this->scheduledXEnd = 0.0f;
 	this->scheduledYTrans = 0.0f;
@@ -566,20 +648,12 @@ Sound::Sound(json data) : Asset(data) {
 
 
 Targets::~Targets() {
-	if (this->sprites) {
-		int spriteCount = data.size();
-		for (int i = 0; i < spriteCount; i++) {
-			delete this->sprites[i];
-		}
-
-		delete[] this->sprites;
-	}
+	int spriteCount = this->sprites.size();
+	for (int i = 0; i < spriteCount; i++)
+		delete this->sprites[i];
 }
 
 Sprite::~Sprite() {
-	if(this->name)
-		delete[] this->name;
-
 	if (this->isStage) {
 		if(this->videoState)
 			delete[] this->videoState;
@@ -591,39 +665,45 @@ Sprite::~Sprite() {
 		if (this->rotationStyle)
 			delete[] this->rotationStyle;
 	}
-	
-	int varsCount = this->variables.size();
-	int listsCount = this->lists.size();
-	int broadcastsCount = this->broadcasts.size();
+
 	int blockSetsCount = this->blockSets.size();
-	int blocksCount = this->blocks.size();
-	int commentsCount = this->comments.size();
-	int costumesCount = this->costumes.size();
-	int soundsCount = this->sounds.size();
-
-	for (int i = 0; i < varsCount; i++) 
-		delete this->variables[i];
-
-	for (int i = 0; i < listsCount; i++)
-		delete this->lists[i];
-
-	for (int i = 0; i < broadcastsCount; i++)
-		delete this->broadcasts[i];
 
 	for (int i = 0; i < blockSetsCount; i++)
-		delete this->blocks[i];
-
-	for (int i = 0; i < blocksCount; i++)
 		delete this->blockSets[i];
 
-	for (int i = 0; i < commentsCount; i++)
-		delete this->comments[i];
+	if (!this->isClone) {
+		if (this->name)
+			delete[] this->name;
 
-	for (int i = 0; i < costumesCount; i++)
-		delete this->costumes[i];
+		int varsCount = this->variables.size();
+		int listsCount = this->lists.size();
+		int broadcastsCount = this->broadcasts.size();
+		int blocksCount = this->blocks.size();
+		int commentsCount = this->comments.size();
+		int costumesCount = this->costumes.size();
+		int soundsCount = this->sounds.size();
 
-	for (int i = 0; i < soundsCount; i++)
-		delete this->sounds[i];
+		for (int i = 0; i < varsCount; i++)
+			delete this->variables[i];
+
+		for (int i = 0; i < listsCount; i++)
+			delete this->lists[i];
+
+		for (int i = 0; i < broadcastsCount; i++)
+			delete this->broadcasts[i];
+
+		for (int i = 0; i < blocksCount; i++)
+			delete this->blocks[i];
+
+		for (int i = 0; i < commentsCount; i++)
+			delete this->comments[i];
+
+		for (int i = 0; i < costumesCount; i++)
+			delete this->costumes[i];
+
+		for (int i = 0; i < soundsCount; i++)
+			delete this->sounds[i];
+	}
 }
 
 Variable::~Variable() {
@@ -759,6 +839,16 @@ Broadcast* Targets::getBroadcastByUniqueID(const char* uniqueID, int spriteID) {
 	return 0;
 }
 
+void Targets::RemoveSprite(Sprite* sprite) {
+	int spriteCount = sprites.size();
+	for (int i = 0; i < spriteCount; i++) {
+		if (sprites[i] == sprite) {
+			sprites.erase(sprites.begin() + i);
+			return;
+		}
+	}
+}
+
 
 
 Variable* Sprite::getVariableByUniqueID(const char* uniqueID) {
@@ -839,6 +929,13 @@ Sound* Sprite::getSoundByName(const char* name) {
 	}
 
 	return 0;
+}
+
+Sprite* Sprite::Clone() {
+	Sprite* clone = new Sprite(this);
+	Executor::instance->targets->sprites.push_back(clone);
+
+	return clone;
 }
 
 
@@ -1166,10 +1263,10 @@ void BlockSet::forceStop() {
 
 #include <math.h>
 
-void BlockSet::execute(Sprite* parentSprite) {
+bool BlockSet::execute(Sprite* parentSprite) { // Returns true if the sprite needs to be skipped entirely after this blockset
 	if (framesToWait) {
 		framesToWait--;
-		return;
+		return false;
 	}
 
 	if (scheduledFrameAction > -1) {
@@ -1183,12 +1280,12 @@ void BlockSet::execute(Sprite* parentSprite) {
 		}
 
 		scheduledFrameAction--;
-		return;
+		return false;
 	}
 
 	if (broadcastWait) {
 		if (!Executor::instance->isBroadcastOn(broadcastWait)) broadcastWait = 0;
-		else return;
+		else return false;
 	}
 
 	while (true) {
@@ -1198,7 +1295,7 @@ void BlockSet::execute(Sprite* parentSprite) {
 			switch (firstBlock->opcode) {
 				case Block::OpCode::event_whenflagclicked:
 				{
-					if (!this->doneFlag) {
+					if (!this->doneFlag && !parentSprite->isClone) {
 						this->doneFlag = true;
 						triggered = true;
 					}
@@ -1254,7 +1351,10 @@ void BlockSet::execute(Sprite* parentSprite) {
 				}
 				case Block::OpCode::control_start_as_clone:
 				{
-					// Uses forceExecute
+					if (!this->doneFlag && parentSprite->isClone) {
+						this->doneFlag = true;
+						triggered = true;
+					}
 					break;
 				}
 			}
@@ -1272,7 +1372,7 @@ void BlockSet::execute(Sprite* parentSprite) {
 				repeatBlock.push_back(firstBlock->next);
 				repeatTimes.push_back(1);
 			}
-			else return;
+			else return false;
 		}
 
 		Block* currentBlock = stackBlocks[currentSubStack];
@@ -1983,8 +2083,50 @@ void BlockSet::execute(Sprite* parentSprite) {
 					}
 
 					printf("Executing \"stop %s\"\n", opt.c_str());
-					if (ret) return;
+					if (ret) return false;
 
+					break;
+				}
+				case Block::OpCode::control_create_clone_of:
+				{
+					char* toClone = getCharsForJSON(currentBlock->getInputByName("CLONE_OPTION")->content[1]);
+					if (!toClone) break;
+					Block* toCloneBlock = parentSprite->getBlockByUniqueID(toClone);
+					delete[] toClone;
+
+					char* cloning = getCharsForJSON(toCloneBlock->getFieldByName("CLONE_OPTION")->content[0]);
+					if (!cloning) break;
+
+					if (strcmp(cloning, "_myself_") == 0) {
+						parentSprite->Clone();
+					}
+					else {
+						Sprite* destSprite = Executor::instance->targets->getSpriteByName(cloning);
+						destSprite->Clone();
+					}
+
+					printf("Executing \"create clone of %s\"\n", cloning);
+
+					delete[] cloning;
+
+					break;
+				}
+				// control_create_clone_of_menu is used by the control_create_clone_of block, so it can't be attached directly to any block
+				case Block::OpCode::control_delete_this_clone:
+				{
+					bool ret = false;
+					if (parentSprite->isClone) {
+						Executor::instance->targets->RemoveSprite(parentSprite);
+
+						delete parentSprite;
+
+						this->forceStop();
+						ret = true;
+					}
+
+					printf("Executing \"delete this clone\"\n");
+
+					if (ret) return true;
 					break;
 				}
 			}

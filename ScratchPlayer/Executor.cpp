@@ -35,15 +35,14 @@ Executor::~Executor() {
 void Executor::executeBlocks() {
     if (!isRunning) return;
 
-    int spriteCount = targets->data.size();
-    for (int spriteID = 0; spriteID < spriteCount; spriteID++) {
+    for (int spriteID = 0; spriteID < targets->sprites.size(); spriteID++) {
         Sprite* currentSprite = targets->sprites[spriteID];
 
         int blockSetCount = currentSprite->blockSets.size();
         for (int bSID = 0; bSID < blockSetCount; bSID++) {
             BlockSet* currentBS = currentSprite->blockSets[bSID];
 
-            currentBS->execute(currentSprite);
+            if (currentBS->execute(currentSprite)) break;
         }
     }
 }
@@ -58,7 +57,7 @@ void Executor::stopBlockSets(BlockSet* bs, Sprite* s) {
         }
     }
     else {
-        int spriteCount = targets->data.size();
+        int spriteCount = targets->sprites.size();
         for (int spriteID = 0; spriteID < spriteCount; spriteID++) {
             Sprite* currentSprite = targets->sprites[spriteID];
 
@@ -73,7 +72,7 @@ void Executor::stopBlockSets(BlockSet* bs, Sprite* s) {
 }
 
 void Executor::triggerBackdropSwitch(const char* name) {
-    int spriteCount = targets->data.size();
+    int spriteCount = targets->sprites.size();
     for (int spriteID = 0; spriteID < spriteCount; spriteID++) {
         Sprite* currentSprite = targets->sprites[spriteID];
 
@@ -93,7 +92,7 @@ void Executor::triggerBackdropSwitch(const char* name) {
 }
 
 void Executor::triggerBroadcast(const char* uniqueID) {
-    int spriteCount = targets->data.size();
+    int spriteCount = targets->sprites.size();
     for (int spriteID = 0; spriteID < spriteCount; spriteID++) {
         Sprite* currentSprite = targets->sprites[spriteID];
 
@@ -113,7 +112,7 @@ void Executor::triggerBroadcast(const char* uniqueID) {
 }
 
 bool Executor::isBroadcastOn(const char* uniqueID) {
-    int spriteCount = targets->data.size();
+    int spriteCount = targets->sprites.size();
     for (int spriteID = 0; spriteID < spriteCount; spriteID++) {
         Sprite* currentSprite = targets->sprites[spriteID];
 
@@ -136,7 +135,7 @@ bool Executor::isBroadcastOn(const char* uniqueID) {
 }
 
 void Executor::render() {
-    int spriteCount = targets->data.size();
+    int spriteCount = targets->sprites.size();
     int minLayer = INT_MAX;
     int maxLayer = INT_MIN;
     for (int i = 0; i < spriteCount; i++) {

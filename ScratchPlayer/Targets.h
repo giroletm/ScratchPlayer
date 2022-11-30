@@ -38,18 +38,21 @@ public:
 	~Targets();
 
 	json data;
-	Sprite** sprites;
+	std::vector<Sprite*> sprites;
 
 	Sprite* getSpriteByName(const char* name);
 
 	Variable* getVariableByUniqueID(const char* uniqueID, int spriteID);
 	List* getListByUniqueID(const char* uniqueID, int spriteID);
 	Broadcast* getBroadcastByUniqueID(const char* uniqueID, int spriteID);
+
+	void RemoveSprite(Sprite* sprite);
 };
 
 class Sprite {
 public:
 	Sprite(json data);
+	Sprite(Sprite* original); // Used for cloning
 	~Sprite();
 
 	bool isStage;
@@ -86,6 +89,7 @@ public:
 
 	// Not in the actual structure, used for execution
 	std::vector<BlockSet*> blockSets;
+	bool isClone;
 
 
 	Variable* getVariableByUniqueID(const char* uniqueID);
@@ -97,6 +101,8 @@ public:
 	Costume* getCostumeByName(const char* name);
 	int getCostumeIDByName(const char* name);
 	Sound* getSoundByName(const char* name);
+
+	Sprite* Clone();
 };
 
 class Variable {
@@ -344,7 +350,7 @@ public:
 	std::vector<int> repeatTimes;
 	std::vector<Block*> repeatBlock;
 
-	void execute(Sprite* parentSprite);
+	bool execute(Sprite* parentSprite);
 	void forceStop();
 };
 

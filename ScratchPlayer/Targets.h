@@ -40,7 +40,7 @@ public:
 	json data;
 	std::vector<Sprite*> sprites;
 
-	Sprite* getSpriteByName(const char* name);
+	Sprite* getSpriteByName(const char* name, Sprite* previous=0, bool noClone=false);
 
 	Variable* getVariableByUniqueID(const char* uniqueID, int spriteID);
 	List* getListByUniqueID(const char* uniqueID, int spriteID);
@@ -91,8 +91,10 @@ public:
 	std::vector<BlockSet*> blockSets;
 	bool isClone;
 
+	void queryProps(float* xPtr, float* yPtr, float* wPtr, float* hPtr);
 
 	Variable* getVariableByUniqueID(const char* uniqueID);
+	Variable* getVariableByName(const char* name);
 	List* getListByUniqueID(const char* uniqueID);
 	Broadcast* getBroadcastByUniqueID(const char* uniqueID);
 	Block* getBlockByUniqueID(const char* uniqueID);

@@ -1,5 +1,7 @@
 #include <iostream>
 #include <string>
+#include <ctime>
+#include <chrono>
 
 #include "Executor.h"
 
@@ -800,10 +802,24 @@ Sound::~Sound() {
 }
 
 
-Sprite* Targets::getSpriteByName(const char* name) {
-	int spriteCount = data.size();
-	for (int i = 0; i < spriteCount; i++) {
-		if (strcmp(this->sprites[i]->name, name) == 0) return this->sprites[i];
+Sprite* Targets::getSpriteByName(const char* name, Sprite* previous, bool noClone) {
+	int spriteCount = sprites.size();
+	if (!previous) {
+		for (int i = 0; i < spriteCount; i++) {
+			if (strcmp(this->sprites[i]->name, name) == 0) {
+				if(!noClone || !this->sprites[i]->isClone) return this->sprites[i];
+			}
+		}
+	}
+	else {
+		bool foundPrevious = false;
+		for (int i = 0; i < spriteCount; i++) {
+			if (!foundPrevious) {
+				if (this->sprites[i] == previous) foundPrevious = true;
+			}
+			else if (strcmp(this->sprites[i]->name, name) == 0) 
+				if (!noClone || !this->sprites[i]->isClone) return this->sprites[i];
+		}
 	}
 
 	return 0;
@@ -849,7 +865,68 @@ void Targets::RemoveSprite(Sprite* sprite) {
 	}
 }
 
+void rotatePoints(float* pX, float* pY, float centerX, float centerY, float angle) { // https://stackoverflow.com/a/2259502
+	float s = sin(angle);
+	float c = cos(angle);
 
+	// translate point back to origin:
+	*pX -= centerX;
+	*pY -= centerY;
+
+	// rotate point
+	float xnew = (*pX)* c - (*pY) * s;
+	float ynew = (*pX)* s + (*pY)* c;
+
+	// translate point back:
+	*pX = xnew + centerX;
+	*pY = ynew + centerY;
+}
+
+void Sprite::queryProps(float* xPtr, float* yPtr, float* wPtr, float* hPtr) {
+	Costume* currentCostume = this->costumes[this->currentCostume];
+	SDL_Texture* rTexture = currentCostume->costumeTexture;
+
+
+	int wi, hi;
+	SDL_QueryTexture(rTexture, NULL, NULL, &wi, &hi);
+	float w = wi, h = hi;
+
+	float sizeRatio = this->size / 100.0f;
+	w *= sizeRatio;
+	h *= sizeRatio;
+
+	float x = this->x - (w / 2.0f);
+	float y = this->y + (h / 2.0f);
+
+	float TLx = x;
+	float TLy = y;
+	float TRx = x + w;
+	float TRy = y;
+	float BLx = x;
+	float BLy = y - h;
+	float BRx = x + w;
+	float BRy = y - h;
+
+	float cX = (currentCostume->rotationCenterX * sizeRatio) + x;
+	float cY = y - (currentCostume->rotationCenterY * sizeRatio);
+
+	float angle = (this->direction - 90.0f);
+
+	if(angle != 0.0f)
+		rotatePoints(&TLx, &TLy, cX, cY, angle * (M_PI*2) / 360.0f);
+
+	x = std::min(TLx, BLx);
+	y = std::max(TLy, TRy);
+	w = std::max(TRx, BRx) - x;
+	h = y - std::min(BLy, BRy);
+
+	//printf("xywh: %f %f %f %f\n", x, y, w, h);
+
+	if (xPtr != NULL) *xPtr = x;
+	if (yPtr != NULL) *yPtr = y;
+	if (wPtr != NULL) *wPtr = w;
+	if (hPtr != NULL) *hPtr = h;
+}
 
 Variable* Sprite::getVariableByUniqueID(const char* uniqueID) {
 	if (!uniqueID) return 0;
@@ -857,6 +934,17 @@ Variable* Sprite::getVariableByUniqueID(const char* uniqueID) {
 	int varsCount = this->variables.size();
 	for (int i = 0; i < varsCount; i++) {
 		if (strcmp(this->variables[i]->uniqueID, uniqueID) == 0) return this->variables[i];
+	}
+
+	return 0;
+}
+
+Variable* Sprite::getVariableByName(const char* name) {
+	if (!name) return 0;
+
+	int varsCount = this->variables.size();
+	for (int i = 0; i < varsCount; i++) {
+		if (strcmp(this->variables[i]->name, name) == 0) return this->variables[i];
 	}
 
 	return 0;
@@ -978,6 +1066,10 @@ float getLoudness() {
 
 float getTimer() {
 	return (float)Game::instance->getFrameCount() / 60.0f;
+}
+
+void resetTimer() {
+	Game::instance->resetFrameCount();
 }
 
 std::string getGenericInputValue(Sprite* parentSprite, json content) {
@@ -1233,6 +1325,221 @@ std::string Block::getBlockValueAsString(Sprite* parentSprite) {
 		case OpCode::looks_size:
 		{
 			return tostr(parentSprite->size);
+		}
+		case Block::OpCode::sensing_touchingobject:
+		{
+			char* tobjm = getCharsForJSON(this->getInputByName("TOUCHINGOBJECTMENU")->content[1]);
+			if (!tobjm) break;
+			Block* tobjmB = parentSprite->getBlockByUniqueID(tobjm);
+			delete[] tobjm;
+
+			char* touchingObj = getCharsForJSON(tobjmB->getFieldByName("TOUCHINGOBJECTMENU")->content[0]);
+			if (!touchingObj) break;
+
+			bool result = false;
+
+			if (strcmp(touchingObj, "_mouse_") == 0) {
+				MouseHandle* mh = &Game::instance->inputHandler.mouseHandle;
+
+				float x, y, w, h;
+				parentSprite->queryProps(&x, &y, &w, &h);
+
+				result = collisionPoint(x, y, x+w, y-h, mh->x, mh->y);
+			}
+			else if (strcmp(touchingObj, "_edge_") == 0) {
+				float x, y, w, h;
+				parentSprite->queryProps(&x, &y, &w, &h);
+
+				result = onEdge(x, y) || onEdge(x+w, y) || onEdge(x, y-h) || onEdge(x+w, y-h);
+			}
+			else {
+				float x1, y1, w1, h1;
+				parentSprite->queryProps(&x1, &y1, &w1, &h1);
+
+				float l1 = x1, 
+					  t1 = y1, 
+					  r1 = x1 + w1, 
+					  b1 = y1 - h1;
+
+				float l2 = INT_MAX, t2 = INT_MIN, r2 = INT_MIN, b2 = INT_MAX;
+				Sprite* destSprite = Executor::instance->targets->getSpriteByName(touchingObj);
+				while (destSprite) {
+					float x2, y2, w2, h2;
+					destSprite->queryProps(&x2, &y2, &w2, &h2);
+
+					l2 = std::min(x2, l2);
+					t2 = std::max(y2, t2);
+					r2 = std::max(x2 + w2, r2);
+					b2 = std::min(y2 - h2, b2);
+
+					destSprite = Executor::instance->targets->getSpriteByName(touchingObj, destSprite);
+				}
+
+				result = collisionRectangle(l1, t1, r1, b1, l2, t2, r2, b2);
+			}
+
+			delete[] touchingObj;
+
+			return result ? "true" : "false";
+		}
+		// sensing_touchingobjectmenu is used by the sensing_touchingobject block, so it can't be attached directly to any block
+		// sensing_touchingcolor & sensing_coloristouchingcolor will be implemented later if not never, because how am I even supposed to implement that?
+		case Block::OpCode::sensing_distanceto:
+		{
+			char* distObjM = getCharsForJSON(this->getInputByName("DISTANCETOMENU")->content[1]);
+			if (!distObjM) break;
+			Block* distObjMB = parentSprite->getBlockByUniqueID(distObjM);
+			delete[] distObjM;
+
+			char* distanceObj = getCharsForJSON(distObjMB->getFieldByName("DISTANCETOMENU")->content[0]);
+			if (!distanceObj) break;
+
+			float result = 0.0f;
+			if (strcmp(distanceObj, "_mouse_") == 0) {
+				MouseHandle* mh = &Game::instance->inputHandler.mouseHandle;
+				result = distance(parentSprite->x, parentSprite->y, mh->x, mh->y);
+			}
+			else {
+				Sprite* destSprite = Executor::instance->targets->getSpriteByName(distanceObj, 0, true);
+				result = distance(parentSprite->x, parentSprite->y, destSprite->x, destSprite->y);
+			}
+
+			delete[] distanceObj;
+
+			return tostr(result);
+		}
+		// sensing_distancetomenu is used by the sensing_distanceto block, so it can't be attached directly to any block
+		// sensing_answer will be implemented later
+		case OpCode::sensing_keypressed:
+		{
+			char* keyOptM = getCharsForJSON(this->getInputByName("KEY_OPTION")->content[1]);
+			if (!keyOptM) break;
+			Block* keyOptMB = parentSprite->getBlockByUniqueID(keyOptM);
+			delete[] keyOptM;
+
+			char* keyOption = getCharsForJSON(keyOptMB->getFieldByName("KEY_OPTION")->content[0]);
+			if (!keyOption) break;
+
+			KeyHandle* kh = Game::instance->inputHandler.getKeyHandleByName(keyOption);
+			delete[] keyOption;
+
+			return kh->pressed ? "true" : "false";
+		}
+		// sensing_keyoptions is used by the sensing_keypressed block, so it can't be attached directly to any block
+		case OpCode::sensing_mousedown:
+		{
+			return Game::instance->inputHandler.getKeyHandle(SDL_BUTTON_LEFT) ? "true" : "false";
+		}
+		case OpCode::sensing_mousex:
+		{
+			return tostr(Game::instance->inputHandler.mouseHandle.x);
+		}
+		case OpCode::sensing_mousey:
+		{
+			return tostr(Game::instance->inputHandler.mouseHandle.y);
+		}
+		// sensing_setdragmode will be implemented later
+		// sensing_loudness will probably not be implemented
+		case OpCode::sensing_timer:
+		{
+			return tostr(getTimer());
+		}
+		case OpCode::sensing_of:
+		{
+			char* prop = getCharsForJSON(this->getFieldByName("PROPERTY")->content[0]);
+
+			char* objM = getCharsForJSON(this->getInputByName("OBJECT")->content[1]);
+			if (!objM) break;
+			Block* objMB = parentSprite->getBlockByUniqueID(objM);
+			delete[] objM;
+
+			char* object = getCharsForJSON(objMB->getFieldByName("OBJECT")->content[0]);
+			if (!object) break;
+
+			Sprite* sprite = (strcmp(object, "_stage_") == 0) ? Executor::instance->targets->sprites[0] : Executor::instance->targets->getSpriteByName(object, 0, true);
+
+			delete[] object;
+
+			std::string toRet = "";
+			if ((strcmp(prop, "backdrop #") == 0) || (strcmp(prop, "costume #") == 0)) {
+				toRet = tostr(sprite->currentCostume + 1);
+			}
+			else if ((strcmp(prop, "backdrop name") == 0) || (strcmp(prop, "costume name") == 0)) {
+				toRet = sprite->costumes[sprite->currentCostume]->name;
+			}
+			else if (strcmp(prop, "volume") == 0) {
+				toRet = tostr(sprite->volume);
+			}
+			else if (strcmp(prop, "x position") == 0) {
+				toRet = tostr(sprite->x);
+			}
+			else if (strcmp(prop, "y position") == 0) {
+				toRet = tostr(sprite->y);
+			}
+			else if (strcmp(prop, "direction") == 0) {
+				toRet = tostr(sprite->direction);
+			}
+			else if (strcmp(prop, "size") == 0) {
+				toRet = tostr(sprite->size);
+			}
+			else {
+				Variable* var = sprite->getVariableByName(prop);
+				if (var) {
+					toRet = var->value;
+				}
+			}
+
+			delete[] prop;
+
+			return toRet;
+		}
+		case OpCode::sensing_current:
+		{
+			char* currentMenu = getCharsForJSON(this->getFieldByName("CURRENTMENU")->content[0]);
+
+			std::time_t t = std::time(0);
+			std::tm* now = std::localtime(&t);
+
+			int val = 0;
+			if (strcmp(currentMenu, "YEAR") == 0) {
+				val = now->tm_year + 1900;
+			}
+			else if (strcmp(currentMenu, "MONTH") == 0) {
+				val = now->tm_mon;
+			}
+			else if (strcmp(currentMenu, "DATE") == 0) {
+				val = now->tm_mday;
+			}
+			else if (strcmp(currentMenu, "DAYOFWEEK") == 0) {
+				val = now->tm_wday + 1;
+			}
+			else if (strcmp(currentMenu, "HOUR") == 0) {
+				val = now->tm_hour;
+			}
+			else if (strcmp(currentMenu, "MINUTE") == 0) {
+				val = now->tm_min;
+			}
+			else if (strcmp(currentMenu, "SECOND") == 0) {
+				val = now->tm_sec;
+			}
+
+			delete[] currentMenu;
+
+			return tostr(val);
+		}
+		case OpCode::sensing_dayssince2000:
+		{
+			auto now = std::chrono::system_clock::now();
+
+			double secs = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
+
+			secs -= 946684800.0f; // Subtracting number of seconds since 1970 and 2000 
+
+			return tostr(secs / (60.0f * 60.0f * 24.0f));
+		}
+		case OpCode::sensing_username:
+		{
+			return "Human being";
 		}
 	}
 
@@ -2127,6 +2434,24 @@ bool BlockSet::execute(Sprite* parentSprite) { // Returns true if the sprite nee
 					printf("Executing \"delete this clone\"\n");
 
 					if (ret) return true;
+					break;
+				}
+				case Block::OpCode::sensing_askandwait:
+				{
+					std::string q = getGenericInputValue(parentSprite, currentBlock->getInputByName("QUESTION")->content);
+
+					framesToWait = -1; // To implement
+
+					printf("Executing \"ask %s and wait\"\n", q.c_str());
+
+					break;
+				}
+				case Block::OpCode::sensing_resettimer:
+				{
+					resetTimer();
+
+					printf("Executing \"reset timer\"\n");
+
 					break;
 				}
 			}

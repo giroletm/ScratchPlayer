@@ -31,6 +31,7 @@ public:
 
 	bool running() { return isRunning; }
 	u32 getFrameCount() { return frameCount; }
+	void resetFrameCount() { frameCount = 0; }
 
 private:
 	bool isRunning = false;

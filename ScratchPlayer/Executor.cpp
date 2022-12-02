@@ -35,8 +35,12 @@ Executor::~Executor() {
 void Executor::executeBlocks() {
     if (!isRunning) return;
 
-    for (int spriteID = 0; spriteID < targets->sprites.size(); spriteID++) {
-        Sprite* currentSprite = targets->sprites[spriteID];
+    // Duplicating to prevent sprite removal problems
+    std::vector<Sprite*> spriteList = targets->sprites;
+    int spriteCount = spriteList.size();
+
+    for (int spriteID = 0; spriteID < spriteCount; spriteID++) {
+        Sprite* currentSprite = spriteList[spriteID];
 
         int blockSetCount = currentSprite->blockSets.size();
         for (int bSID = 0; bSID < blockSetCount; bSID++) {

@@ -29,21 +29,21 @@ void InputHandler::updateMouse() {
 	SDL_GetWindowSize(Game::instance->window, &ww, &wh);
 
 	int rRH = wh;
-	int rRW = (int)ceil((float)wh * 800.0f / 600.0f);
+	int rRW = (int)ceil((float)wh * 480.0f / 360.0f);
 	if (rRW > ww) {
 		rRW = ww;
-		rRH = (int)ceil((float)ww * 600.0f / 800.0f);
+		rRH = (int)ceil((float)ww * 360.0f / 480.0f);
 	}
 
 	xM -= (ww / 2) - (rRW / 2);
 	yM -= (wh / 2) - (rRH / 2);
 
-	xM = (int)round((float)xM / ((float)rRW / 800.0f));
-	yM = (int)round((float)yM / ((float)rRH / 600.0f));
+	xM = (int)round((float)xM / ((float)rRW / 480.0f));
+	yM = (int)round((float)yM / ((float)rRH / 360.0f));
 
 
-	mouseHandle.x = xM;
-	mouseHandle.y = yM;
+	mouseHandle.x = xM - (ww / 2);
+	mouseHandle.y = -yM + (wh / 2);
 }
 
 void InputHandler::keyStateChanged(SDL_Keycode keycode, bool idUp) {

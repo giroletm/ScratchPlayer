@@ -16,6 +16,8 @@ public:
 	bool isRunning;
 	SDL_Texture* hangOn;
 
+	//SDL_FPoint polyTbl[4] = { {0, 0}, {0, 0}, {0, 0}, {0, 0} };
+
 	void render();
 	void executeBlocks();
 

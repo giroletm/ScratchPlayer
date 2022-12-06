@@ -158,23 +158,30 @@ void Executor::render() {
                 int ww, wh;
                 SDL_GetWindowSize(Game::instance->window, &ww, &wh);
 
+                int wi, hi;
+                SDL_QueryTexture(rTexture, NULL, NULL, &wi, &hi);
+                float w = wi, h = hi;
+
                 if (i == 0) {
-                    SDL_Rect dRect = { 0, 0, ww, wh };
+                    int cX = (int)round(-currentCostume->rotationCenterX + (ww/2.0f));
+                    int cY = (int)round(-currentCostume->rotationCenterY + (wh/2.0f));
+
+
+                    SDL_Rect dRect = { cX, cY, wi, hi };
                     SDL_RenderCopy(Game::instance->renderer, rTexture, NULL, &dRect);
 
                     //printf("Rendering Sprite %d (Background)\n", i);
                 }
                 else {
-                    int wi, hi;
-                    SDL_QueryTexture(rTexture, NULL, NULL, &wi, &hi);
-                    float w = wi, h = hi;
-
                     float sizeRatio = currentSprite->size / 100.0f;
                     w *= sizeRatio;
                     h *= sizeRatio;
 
-                    int x = (int)round(currentSprite->x + ((float)ww/2.0f) - (w/2.0f));
-                    int y = (int)round(-currentSprite->y + ((float)wh/2.0f) - (h/2.0f));
+                    int cntX = currentCostume->rotationCenterX * sizeRatio;
+                    int cntY = currentCostume->rotationCenterY * sizeRatio;
+
+                    int x = (int)round(currentSprite->x + ((float)ww/2.0f) - cntX);
+                    int y = (int)round(-currentSprite->y + ((float)wh/2.0f) - cntY);
 
                     SDL_Rect dRect = { x, y, (int)round(w), (int)round(h) };
                     SDL_Point centerRot = { currentCostume->rotationCenterX * sizeRatio, currentCostume->rotationCenterY * sizeRatio };
@@ -201,6 +208,18 @@ void Executor::render() {
             }
         }
     }
+
+    /*
+    SDL_SetRenderDrawColor(Game::instance->renderer, 255, 0, 0, 255);
+    int ww, wh;
+    SDL_GetWindowSize(Game::instance->window, &ww, &wh);
+    float wwpad = (ww / 2.0f);
+    float whpad = (wh / 2.0f);
+    for (int i = 0; i < 4; i++) {
+        SDL_RenderDrawLine(Game::instance->renderer, polyTbl[i].x + wwpad, -polyTbl[i].y + whpad, polyTbl[(i + 1) % 4].x + wwpad, -polyTbl[(i + 1) % 4].y + whpad);
+    }
+    SDL_SetRenderDrawColor(Game::instance->renderer, 255, 255, 255, 255);
+    */
 
     if (!isRunning) {
         int ww, wh;

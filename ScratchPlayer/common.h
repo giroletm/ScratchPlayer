@@ -6,6 +6,8 @@
 #include "json.hpp"
 using json = nlohmann::json;
 
+#include <SDL_rect.h>
+
 
 typedef unsigned char u8;
 typedef unsigned short u16;
@@ -42,21 +44,12 @@ inline bool collisionPoint(float left, float top, float right, float bottom, flo
 	return ((x >= left && x <= right) && (y >= bottom && y <= top));
 }
 
-inline bool collisionRectangle(float l1, float t1, float r1, float b1, float l2, float t2, float r2, float b2) { // https://www.geeksforgeeks.org/find-two-rectangles-overlap/
-	// if rectangle has area 0, no overlap
-	if (l1 == r1 || t1 == b1 || r2 == l2 || t2 == b2)
-		return false;
+bool collisionRectangle(float l1, float t1, float r1, float b1, float l2, float t2, float r2, float b2); // https://www.geeksforgeeks.org/find-two-rectangles-overlap/
+bool collisionPolyPoint(SDL_FPoint* vertices, int vertCount, float x, float y); // http://www.jeffreythompson.org/collision-detection/poly-point.php
+bool collisionLineLine(float x1, float y1, float x2, float y2, float x3, float y3, float x4, float y4);
+bool collisionPolyLine(SDL_FPoint* vertices, int vertCount, float x1, float y1, float x2, float y2);
+bool collisionPolyPoly(SDL_FPoint* verts1, int verts1Count, SDL_FPoint* verts2, int verts2Count); // http://www.jeffreythompson.org/collision-detection/poly-poly.php
 
-	// If one rectangle is on left side of other
-	if (l1 > r2 || l2 > r1)
-		return false;
-
-	// If one rectangle is above other
-	if (b1 > t2 || b2 > t1)
-		return false;
-
-	return true;
-}
 
 inline bool onEdge(float x, float y) {
 	return !collisionPoint(-240, 180, 240, -180, x, y);

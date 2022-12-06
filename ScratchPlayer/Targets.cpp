@@ -6,6 +6,13 @@
 #include "Executor.h"
 
 
+#define DISABLE_PRINTF
+
+#ifdef DISABLE_PRINTF
+#define printf(fmt, ...) (0)
+#endif
+
+
 Targets::Targets(json content) {
 	data = content["targets"];
 
@@ -188,7 +195,7 @@ Sprite::Sprite(Sprite* original) {
 	int soundsCount = original->sounds.size();
 
 	for (int i = 0; i < varsCount; i++) 
-		this->variables.push_back(original->variables[i]);
+		this->variables.push_back(new Variable(original->variables[i]));
 
 	for (int i = 0; i < listsCount; i++) 
 		this->lists.push_back(original->lists[i]);
@@ -228,6 +235,12 @@ Variable::Variable(std::string id, json data) {
 	#ifdef _DEBUG
 	printf("\t\t- Variable \"%s\" (\"%s\") = \"%s\".\n", this->name, this->uniqueID, this->value);
 	#endif
+}
+
+Variable::Variable(Variable* variable) {
+	this->uniqueID = getCharsForString(variable->uniqueID);
+	this->name = getCharsForString(variable->name);
+	this->value = getCharsForString(variable->value);
 }
 
 List::List(std::string id, json data) {
@@ -506,42 +519,51 @@ Block::OpCode Block::getOpCode(const char* opcode) {
 Block::Block(std::string id, json data) {
 	this->uniqueID = getCharsForString(id);
 
-	std::string rawOpCode = data["opcode"];
-	this->opcode = getOpCode(rawOpCode.c_str());
-	
-	this->shadow = data["shadow"];
-	this->topLevel = data["topLevel"];
+	if (data.is_array()) {
+		this->opcode = OpCode::data_variable;
+		this->x = data[3];
+		this->y = data[4];
 
-	if (data["parent"].is_null()) {
-		this->x = data["x"];
-		this->y = data["y"];
+		this->inputs.push_back(new Input(data[2], data[1]));
 	}
 	else {
-		this->x = 0;
-		this->y = 0;
+		std::string rawOpCode = data["opcode"];
+		this->opcode = getOpCode(rawOpCode.c_str());
+
+		this->shadow = data["shadow"];
+		this->topLevel = data["topLevel"];
+
+		if (data["parent"].is_null()) {
+			this->x = data["x"];
+			this->y = data["y"];
+		}
+		else {
+			this->x = 0;
+			this->y = 0;
+		}
+
+		this->parent = 0;
+		this->next = 0;
+
+
+		#ifdef _DEBUG
+		printf("\t\t- Block \"%d\" (\"%s\").\n", this->opcode, this->uniqueID);
+		#endif
+
+
+		json inputsData = data["inputs"];
+		for (auto i = inputsData.begin(); i != inputsData.end(); i++) {
+			this->inputs.push_back(new Input(i.key(), i.value()));
+		}
+
+
+		json fieldsData = data["fields"];
+		for (auto i = fieldsData.begin(); i != fieldsData.end(); i++) {
+			this->fields.push_back(new Field(i.key(), i.value()));
+		}
+
+		// TODO: Custom blocks "mutation" element
 	}
-
-	this->parent = 0;
-	this->next = 0;
-
-
-	#ifdef _DEBUG
-	printf("\t\t- Block \"%d\" (\"%s\").\n", this->opcode, this->uniqueID);
-	#endif
-
-
-	json inputsData = data["inputs"];
-	for (auto i = inputsData.begin(); i != inputsData.end(); i++) {
-		this->inputs.push_back(new Input(i.key(), i.value()));
-	}
-	
-
-	json fieldsData = data["fields"];
-	for (auto i = fieldsData.begin(); i != fieldsData.end(); i++) {
-		this->fields.push_back(new Field(i.key(), i.value()));
-	}
-
-	// TODO: Custom blocks "mutation" element
 }
 
 BlockSet::BlockSet(Block* block) {
@@ -668,7 +690,11 @@ Sprite::~Sprite() {
 			delete[] this->rotationStyle;
 	}
 
+	int varsCount = this->variables.size();
 	int blockSetsCount = this->blockSets.size();
+
+	for (int i = 0; i < varsCount; i++)
+		delete this->variables[i];
 
 	for (int i = 0; i < blockSetsCount; i++)
 		delete this->blockSets[i];
@@ -677,16 +703,12 @@ Sprite::~Sprite() {
 		if (this->name)
 			delete[] this->name;
 
-		int varsCount = this->variables.size();
 		int listsCount = this->lists.size();
 		int broadcastsCount = this->broadcasts.size();
 		int blocksCount = this->blocks.size();
 		int commentsCount = this->comments.size();
 		int costumesCount = this->costumes.size();
 		int soundsCount = this->sounds.size();
-
-		for (int i = 0; i < varsCount; i++)
-			delete this->variables[i];
 
 		for (int i = 0; i < listsCount; i++)
 			delete this->lists[i];
@@ -835,6 +857,16 @@ Variable* Targets::getVariableByUniqueID(const char* uniqueID, int spriteID) {
 	return 0;
 }
 
+Variable* Targets::getVariableByUniqueID(const char* uniqueID, Sprite* sprite) {
+	if (!uniqueID) return 0;
+
+	Variable* bgVar = this->sprites[0]->getVariableByUniqueID(uniqueID);
+	if (bgVar) return bgVar;
+	else if(sprite) return sprite->getVariableByUniqueID(uniqueID);
+
+	return 0;
+}
+
 List* Targets::getListByUniqueID(const char* uniqueID, int spriteID) {
 	if (!uniqueID) return 0;
 
@@ -895,8 +927,11 @@ void Sprite::queryProps(float* xPtr, float* yPtr, float* wPtr, float* hPtr) {
 	w *= sizeRatio;
 	h *= sizeRatio;
 
-	float x = this->x - (w / 2.0f);
-	float y = this->y + (h / 2.0f);
+	float cntX = currentCostume->rotationCenterX * sizeRatio;
+	float cntY = currentCostume->rotationCenterY * sizeRatio;
+
+	float x = this->x - cntX;
+	float y = this->y + cntY;
 
 	float TLx = x;
 	float TLy = y;
@@ -907,25 +942,75 @@ void Sprite::queryProps(float* xPtr, float* yPtr, float* wPtr, float* hPtr) {
 	float BRx = x + w;
 	float BRy = y - h;
 
-	float cX = (currentCostume->rotationCenterX * sizeRatio) + x;
-	float cY = y - (currentCostume->rotationCenterY * sizeRatio);
+	float cX = cntX + x;
+	float cY = y - cntY;
 
-	float angle = (this->direction - 90.0f);
+	float angle = -(this->direction - 90.0f);
 
-	if(angle != 0.0f)
-		rotatePoints(&TLx, &TLy, cX, cY, angle * (M_PI*2) / 360.0f);
+	if (angle != 0.0f) {
+		rotatePoints(&TLx, &TLy, cX, cY, angle * (M_PI * 2) / 360.0f);
+		rotatePoints(&TRx, &TRy, cX, cY, angle * (M_PI * 2) / 360.0f);
+		rotatePoints(&BLx, &BLy, cX, cY, angle * (M_PI * 2) / 360.0f);
+		rotatePoints(&BRx, &BRy, cX, cY, angle * (M_PI * 2) / 360.0f);
+	}
 
 	x = std::min(TLx, BLx);
 	y = std::max(TLy, TRy);
 	w = std::max(TRx, BRx) - x;
 	h = y - std::min(BLy, BRy);
 
-	//printf("xywh: %f %f %f %f\n", x, y, w, h);
+	//printf("xywh (%d;%d): %f %f %f %f\n", this->x, this->y, x, y, w, h);
 
 	if (xPtr != NULL) *xPtr = x;
 	if (yPtr != NULL) *yPtr = y;
 	if (wPtr != NULL) *wPtr = w;
 	if (hPtr != NULL) *hPtr = h;
+}
+
+void Sprite::queryProps(SDL_FPoint* TL, SDL_FPoint* TR, SDL_FPoint* BL, SDL_FPoint* BR) {
+	Costume* currentCostume = this->costumes[this->currentCostume];
+	SDL_Texture* rTexture = currentCostume->costumeTexture;
+
+
+	int wi, hi;
+	SDL_QueryTexture(rTexture, NULL, NULL, &wi, &hi);
+	float w = wi, h = hi;
+
+	float sizeRatio = this->size / 100.0f;
+	w *= sizeRatio;
+	h *= sizeRatio;
+
+	float cntX = currentCostume->rotationCenterX * sizeRatio;
+	float cntY = currentCostume->rotationCenterY * sizeRatio;
+
+	float x = this->x - cntX;
+	float y = this->y + cntY;
+
+	float TLx = x;
+	float TLy = y;
+	float TRx = x + w;
+	float TRy = y;
+	float BLx = x;
+	float BLy = y - h;
+	float BRx = x + w;
+	float BRy = y - h;
+
+	float cX = cntX + x;
+	float cY = y - cntY;
+
+	float angle = -(this->direction - 90.0f);
+
+	if(angle != 0.0f) {
+		rotatePoints(&TLx, &TLy, cX, cY, angle * (M_PI * 2.0f) / 360.0f);
+		rotatePoints(&TRx, &TRy, cX, cY, angle * (M_PI * 2.0f) / 360.0f);
+		rotatePoints(&BLx, &BLy, cX, cY, angle * (M_PI * 2.0f) / 360.0f);
+		rotatePoints(&BRx, &BRy, cX, cY, angle * (M_PI * 2.0f) / 360.0f);
+	}
+
+	if (TL != NULL) *TL = { TLx, TLy };
+	if (TR != NULL) *TR = { TRx, TRy };
+	if (BL != NULL) *BL = { BLx, BLy };
+	if (BR != NULL) *BR = { BRx, BRy };
 }
 
 Variable* Sprite::getVariableByUniqueID(const char* uniqueID) {
@@ -1073,21 +1158,42 @@ void resetTimer() {
 }
 
 std::string getGenericInputValue(Sprite* parentSprite, json content) {
-	if (content[0] & 2) {
-		char* bID = getCharsForString(content[1]);
-		std::string dist = parentSprite->getBlockByUniqueID(bID)->getBlockValueAsString(parentSprite);
-		delete[] bID;
+	json cnt = content[1];
+	if (!cnt.is_null()) {
+		if (cnt.is_array()) {
+			int type = cnt[0];
+			if (type == 12) {
+				char* varUID = getCharsForString(cnt[2]);
+				std::string val = Executor::instance->targets->getVariableByUniqueID(varUID, parentSprite)->value;
+				delete[] varUID;
 
-		return dist;
-	}
-	else {
-		json cnt = content[1];
-		if (!cnt.is_null()) {
-			std::string dist = cnt[1];
-			return dist;
+				return val;
+			}
+			else if (type >= 4 && type <= 8) {
+				std::string dist = cnt[1];
+				return dist;
+			}
+			else if (type == 10) {
+				char* text = getCharsForString(cnt[1]);
+				Block* b = parentSprite->getBlockByUniqueID(text);
+				std::string str = text;
+				delete[] text;
+
+				if (b) return b->getBlockValueAsString(parentSprite);
+				else return str;
+			}
 		}
-		else return "null";
+		else if (cnt.is_string()) {
+			char* text = getCharsForString(cnt);
+			Block* b = parentSprite->getBlockByUniqueID(text);
+			std::string str = text;
+			delete[] text;
+
+			if (b) return b->getBlockValueAsString(parentSprite);
+			else return str;
+		}
 	}
+	else return "null";
 }
 
 
@@ -1185,7 +1291,7 @@ std::string Block::getBlockValueAsString(Sprite* parentSprite) {
 				result = op1 < op2;
 
 			else if (this->opcode == OpCode::operator_equals)
-				result = op1 == op2;
+				result = operand1 == operand2;
 
 			else if (this->opcode == OpCode::operator_and)
 				result = op1i && op2i;
@@ -1353,29 +1459,20 @@ std::string Block::getBlockValueAsString(Sprite* parentSprite) {
 				result = onEdge(x, y) || onEdge(x+w, y) || onEdge(x, y-h) || onEdge(x+w, y-h);
 			}
 			else {
-				float x1, y1, w1, h1;
-				parentSprite->queryProps(&x1, &y1, &w1, &h1);
+				SDL_FPoint polyTbl1[4];
+				parentSprite->queryProps(&(polyTbl1[0]), &(polyTbl1[1]), &(polyTbl1[3]), &(polyTbl1[2]));
 
-				float l1 = x1, 
-					  t1 = y1, 
-					  r1 = x1 + w1, 
-					  b1 = y1 - h1;
-
-				float l2 = INT_MAX, t2 = INT_MIN, r2 = INT_MIN, b2 = INT_MAX;
+				bool col = false;
 				Sprite* destSprite = Executor::instance->targets->getSpriteByName(touchingObj);
 				while (destSprite) {
-					float x2, y2, w2, h2;
-					destSprite->queryProps(&x2, &y2, &w2, &h2);
+					SDL_FPoint polyTbl2[4];
+					destSprite->queryProps(&(polyTbl2[0]), &(polyTbl2[1]), &(polyTbl2[3]), &(polyTbl2[2]));
 
-					l2 = std::min(x2, l2);
-					t2 = std::max(y2, t2);
-					r2 = std::max(x2 + w2, r2);
-					b2 = std::min(y2 - h2, b2);
+					result = collisionPolyPoly(polyTbl1, 4, polyTbl2, 4);
+					if (result) break;
 
 					destSprite = Executor::instance->targets->getSpriteByName(touchingObj, destSprite);
 				}
-
-				result = collisionRectangle(l1, t1, r1, b1, l2, t2, r2, b2);
 			}
 
 			delete[] touchingObj;
@@ -1423,12 +1520,15 @@ std::string Block::getBlockValueAsString(Sprite* parentSprite) {
 			KeyHandle* kh = Game::instance->inputHandler.getKeyHandleByName(keyOption);
 			delete[] keyOption;
 
-			return kh->pressed ? "true" : "false";
+			return kh->held ? "true" : "false";
 		}
 		// sensing_keyoptions is used by the sensing_keypressed block, so it can't be attached directly to any block
 		case OpCode::sensing_mousedown:
 		{
-			return Game::instance->inputHandler.getKeyHandle(SDL_BUTTON_LEFT) ? "true" : "false";
+			bool left = Game::instance->inputHandler.getKeyHandle(SDL_BUTTON_LEFT)->held;
+			bool right = Game::instance->inputHandler.getKeyHandle(SDL_BUTTON_RIGHT)->held;
+			bool mid = Game::instance->inputHandler.getKeyHandle(SDL_BUTTON_MIDDLE)->held;
+			return (left || right || mid) ? "true" : "false";
 		}
 		case OpCode::sensing_mousex:
 		{
@@ -1541,6 +1641,10 @@ std::string Block::getBlockValueAsString(Sprite* parentSprite) {
 		{
 			return "Human being";
 		}
+		case OpCode::data_variable:
+		{
+			return Executor::instance->targets->getVariableByUniqueID(this->inputs[0]->name, parentSprite)->value;
+		}
 	}
 
 	return base;
@@ -1622,6 +1726,38 @@ bool BlockSet::execute(Sprite* parentSprite) { // Returns true if the sprite nee
 				}
 				case Block::OpCode::event_whenthisspriteclicked:
 				{
+					if (parentSprite->visible) {
+						bool left = Game::instance->inputHandler.getKeyHandle(SDL_BUTTON_LEFT)->pressed;
+						bool right = Game::instance->inputHandler.getKeyHandle(SDL_BUTTON_RIGHT)->pressed;
+						bool mid = Game::instance->inputHandler.getKeyHandle(SDL_BUTTON_MIDDLE)->pressed;
+
+						if (left || right || mid) {
+							MouseHandle* mh = &Game::instance->inputHandler.mouseHandle;
+
+							SDL_FPoint polyTbl[4];
+							parentSprite->queryProps(&(polyTbl[0]), &(polyTbl[1]), &(polyTbl[3]), &(polyTbl[2]));
+
+							//printf("ah: %f;%f  %f;%f  %f;%f  %f;%f  by %d;%d\n", polyTbl[0].x, polyTbl[0].y, polyTbl[1].x, polyTbl[1].y, polyTbl[2].x, polyTbl[2].y, polyTbl[3].x, polyTbl[3].y, mh->x, mh->y);
+							/*
+							int ww, wh;
+							SDL_GetWindowSize(Game::instance->window, &ww, &wh);
+							float wwpad = (ww / 2.0f);
+							float whpad = (wh / 2.0f);
+							
+							SDL_RenderDrawLine(Game::instance->renderer, polyTbl[0].x + wwpad, -polyTbl[0].y + whpad, polyTbl[1].x + wwpad, -polyTbl[1].y + whpad);
+							SDL_RenderDrawLine(Game::instance->renderer, polyTbl[1].x + wwpad, -polyTbl[1].y + whpad, polyTbl[2].x + wwpad, -polyTbl[2].y + whpad);
+							SDL_RenderDrawLine(Game::instance->renderer, polyTbl[2].x + wwpad, -polyTbl[2].y + whpad, polyTbl[3].x + wwpad, -polyTbl[3].y + whpad);
+							SDL_RenderDrawLine(Game::instance->renderer, polyTbl[3].x + wwpad, -polyTbl[3].y + whpad, polyTbl[0].x + wwpad, -polyTbl[0].y + whpad);
+							*/
+							/*
+							for (int i = 0; i < 4; i++)
+								Executor::instance->polyTbl[i] = polyTbl[i];
+							*/
+
+							triggered = collisionPolyPoint(&(polyTbl[0]), 4, mh->x, mh->y);
+						}
+					}
+
 					break;
 				}
 				case Block::OpCode::event_whenbackdropswitchesto:
@@ -1738,7 +1874,9 @@ bool BlockSet::execute(Sprite* parentSprite) { // Returns true if the sprite nee
 						y = (rand() % wh) - (wh / 2);;
 					}
 					else if (strcmp(toGo, "_mouse_") == 0) {
-
+						MouseHandle* mh = &Game::instance->inputHandler.mouseHandle;
+						x = mh->x;
+						y = mh->y;
 					}
 					else {
 						Sprite* destSprite = Executor::instance->targets->getSpriteByName(toGo);
@@ -1990,17 +2128,24 @@ bool BlockSet::execute(Sprite* parentSprite) { // Returns true if the sprite nee
 					Block* destBlock = parentSprite->getBlockByUniqueID(cost);
 					delete[] cost;
 
-					char* costume = getCharsForJSON(destBlock->getFieldByName("COSTUME")->content[0]);
-					if (!costume) break;
+					int i = -1;
 
-					int i = parentSprite->getCostumeIDByName(costume);
+					if (destBlock->opcode == Block::OpCode::looks_costume) {
+						char* costume = getCharsForJSON(destBlock->getFieldByName("COSTUME")->content[0]);
+						if (!costume) break;
+
+						i = parentSprite->getCostumeIDByName(costume);
+						delete[] costume;
+					}
+					else {
+						i = (int)str2float(destBlock->getBlockValueAsString(parentSprite));
+					}
+
 					if (i < 0) break;
 
 					parentSprite->currentCostume = i;
 
-					printf("Executing \"switch costume to %s\"\n", costume);
-
-					delete[] costume;
+					printf("Executing \"switch costume to %s\"\n", parentSprite->costumes[i]->name);
 
 					break;
 				}
@@ -2021,20 +2166,28 @@ bool BlockSet::execute(Sprite* parentSprite) { // Returns true if the sprite nee
 					Block* destBlock = parentSprite->getBlockByUniqueID(cost);
 					delete[] cost;
 
-					char* backdrop = getCharsForJSON(destBlock->getFieldByName("BACKDROP")->content[0]);
-					if (!backdrop) break;
-
 					Sprite* bg = Executor::instance->targets->sprites[0];
-					int i = bg->getCostumeIDByName(backdrop);
+					int i = -1;
+
+					if (destBlock->opcode == Block::OpCode::looks_backdrops) {
+						char* backdrop = getCharsForJSON(destBlock->getFieldByName("BACKDROP")->content[0]);
+						if (!backdrop) break;
+
+						i = bg->getCostumeIDByName(backdrop);
+						delete[] backdrop;
+					}
+					else {
+						i = (int)str2float(destBlock->getBlockValueAsString(parentSprite));
+					}
+
 					if (i < 0) break;
 
 					bg->currentCostume = i;
 
-					Executor::instance->triggerBackdropSwitch(backdrop);
+					Executor::instance->triggerBackdropSwitch(bg->costumes[i]->name);
 
-					printf("Executing \"switch backdrop to %s\"\n", backdrop);
+					printf("Executing \"switch backdrop to %s\"\n", bg->costumes[i]->name);
 
-					delete[] backdrop;
 
 					break;
 				}
@@ -2454,6 +2607,38 @@ bool BlockSet::execute(Sprite* parentSprite) { // Returns true if the sprite nee
 
 					break;
 				}
+				case Block::OpCode::data_setvariableto:
+				{
+					std::string paramValue = getGenericInputValueByName(parentSprite, currentBlock, "VALUE");
+
+					char* vID = getCharsForJSON(currentBlock->getFieldByName("VARIABLE")->content[1]);
+					Variable* var = Executor::instance->targets->getVariableByUniqueID(vID, parentSprite);
+					delete[] vID;
+					if (var) {
+						delete[] var->value;
+						var->value = getCharsForString(paramValue);
+					}
+
+					printf("Executing \"set %s to %s\"\n", var->name, paramValue.c_str());
+
+					break;
+				}
+				case Block::OpCode::data_changevariableby:
+				{
+					float paramValue = str2float(getGenericInputValueByName(parentSprite, currentBlock, "VALUE"));
+
+					char* vID = getCharsForJSON(currentBlock->getFieldByName("VARIABLE")->content[1]);
+					Variable* var = Executor::instance->targets->getVariableByUniqueID(vID, parentSprite);
+					if (var) {
+						float origValue = str2float(var->value);
+						delete[] var->value;
+						var->value = getCharsForString(tostr(origValue + paramValue));
+					}
+
+					printf("Executing \"change %s by %f\"\n", var->name, paramValue);
+
+					break;
+				}
 			}
 
 			if (!noNext) {
@@ -2487,9 +2672,10 @@ bool BlockSet::execute(Sprite* parentSprite) { // Returns true if the sprite nee
 
 							}
 							else {
-								//printf("Got a repeat to do (%d) at %p\n", repeatTimes[currentSubStack], repeatBlock[currentSubStack]);
+								//printf("Got a repeat to do (%d) at %p (Stack %d)\n", repeatTimes[currentSubStack], repeatBlock[currentSubStack], currentSubStack);
 								stackBlocks[currentSubStack] = repeatBlock[currentSubStack];
-								repeatTimes[currentSubStack]--;
+								if(repeatTimes[currentSubStack] > 0)
+									repeatTimes[currentSubStack]--;
 
 								break;
 							}
@@ -2508,5 +2694,8 @@ bool BlockSet::execute(Sprite* parentSprite) { // Returns true if the sprite nee
 
 			if (halt) break;
 		}
+		else break;
 	}
+
+	return false;
 }

@@ -43,6 +43,7 @@ public:
 	Sprite* getSpriteByName(const char* name, Sprite* previous=0, bool noClone=false);
 
 	Variable* getVariableByUniqueID(const char* uniqueID, int spriteID);
+	Variable* getVariableByUniqueID(const char* uniqueID, Sprite* sprite);
 	List* getListByUniqueID(const char* uniqueID, int spriteID);
 	Broadcast* getBroadcastByUniqueID(const char* uniqueID, int spriteID);
 
@@ -92,6 +93,7 @@ public:
 	bool isClone;
 
 	void queryProps(float* xPtr, float* yPtr, float* wPtr, float* hPtr);
+	void queryProps(SDL_FPoint* TL, SDL_FPoint* TR, SDL_FPoint* BL, SDL_FPoint* BR);
 
 	Variable* getVariableByUniqueID(const char* uniqueID);
 	Variable* getVariableByName(const char* name);
@@ -110,6 +112,7 @@ public:
 class Variable {
 public:
 	Variable(std::string id, json data);
+	Variable(Variable* variable); // Used for cloning
 	~Variable();
 
 	char* uniqueID;
@@ -275,29 +278,29 @@ public:
 		operator_mathop = 112,
 
 		// Variables
-		/*Alone variable block*/
-		data_setvariableto = 113,
-		data_changevariableby = 114,
-		data_showvariable = 115,
-		data_hidevariable = 116,
-		data_addtolist = 117,
-		data_deleteoflist = 118,
-		data_deletealloflist = 119,
-		data_insertatlist = 120,
-		data_replaceitemoflist = 121,
-		data_itemoflist = 122,
-		data_itemnumoflist = 123,
-		data_lengthoflist = 124,
-		data_listcontainsitem = 125,
-		data_showlist = 126,
-		data_hidelist = 127,
+		data_variable = 113, // Alone variable block, doesn't exist but added it to simplify things
+		data_setvariableto = 114,
+		data_changevariableby = 115,
+		data_showvariable = 116,
+		data_hidevariable = 117,
+		data_addtolist = 118,
+		data_deleteoflist = 119,
+		data_deletealloflist = 120,
+		data_insertatlist = 121,
+		data_replaceitemoflist = 122,
+		data_itemoflist = 123,
+		data_itemnumoflist = 124,
+		data_lengthoflist = 125,
+		data_listcontainsitem = 126,
+		data_showlist = 127,
+		data_hidelist = 128,
 
 		// My Blocks
-		procedures_definition = 128,
-		procedures_prototype = 129,
-		procedures_call = 130,
-		argument_reporter_string_number = 131,
-		argument_reporter_boolean = 132,
+		procedures_definition = 129,
+		procedures_prototype = 130,
+		procedures_call = 131,
+		argument_reporter_string_number = 132,
+		argument_reporter_boolean = 133,
 	};
 
 	char* uniqueID;

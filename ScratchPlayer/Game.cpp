@@ -29,7 +29,7 @@ int Game::init(const char* title, int xpos, int ypos, int width, int height, u32
 
 		isRunning = true;
 
-		exec = new Executor("Test40.sb3");
+		exec = new Executor("3D Bonsai Simulator.sb3");
 
 		return 0;
 	}

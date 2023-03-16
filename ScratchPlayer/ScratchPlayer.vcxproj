@@ -119,7 +119,7 @@
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(SolutionDir)\Libs\zlib-win-build\build-VS2022\$(Platform)\$(Configuration);$(SolutionDir)\Libs\libzip-win-build\build-VS2022\$(Platform)\$(Configuration);$(SolutionDir)\Libs\SDL2-2.24.1\lib\x86;$(SolutionDir)\Libs\SDL2_image-2.6.2\lib\x86;$(SolutionDir)\Libs\SDL2_ttf-2.20.1\lib\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>libz-static.lib;libzip-static.lib;SDL2.lib;SDL2main.lib;SDL2_image.lib;SDL2_ttf.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
@@ -153,7 +153,7 @@
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(SolutionDir)\Libs\zlib-win-build\build-VS2022\$(Platform)\$(Configuration);$(SolutionDir)\Libs\libzip-win-build\build-VS2022\$(Platform)\$(Configuration);$(SolutionDir)\Libs\SDL2-2.24.1\lib\x64;$(SolutionDir)\Libs\SDL2_image-2.6.2\lib\x64;$(SolutionDir)\Libs\SDL2_ttf-2.20.1\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>libz-static.lib;libzip-static.lib;SDL2.lib;SDL2main.lib;SDL2_image.lib;SDL2_ttf.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
